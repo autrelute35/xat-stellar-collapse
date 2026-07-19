@@ -56,18 +56,53 @@
         pointer-events: none;
         background: radial-gradient(ellipse at center, transparent 48%, rgba(0, 0, 0, 0.56) 100%);
       }
+
+      .music-dock {
+        position: absolute;
+        right: max(12px, env(safe-area-inset-right));
+        bottom: max(12px, env(safe-area-inset-bottom));
+        z-index: 3;
+        width: 200px;
+        height: 200px;
+        overflow: hidden;
+        border: 1px solid rgba(247, 249, 251, 0.16);
+        border-radius: 4px;
+        background: #000;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.72);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(12px);
+        transition: opacity 420ms ease, transform 420ms ease;
+      }
+
+      .music-dock.is-active {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
+      .music-dock iframe {
+        display: block;
+        width: 200px;
+        height: 200px;
+        border: 0;
+      }
     </style>
   </head>
   <body>
     <main class="star-shell" aria-label="Interactive monochrome starfield with a page-swallowing black hole">
       <canvas aria-hidden="true"></canvas>
       <div class="vignette" aria-hidden="true"></div>
+      <div class="music-dock" aria-label="Music player">
+        <div id="music-player"></div>
+      </div>
     </main>
 
     <script>
       (() => {
         const canvas = document.querySelector("canvas");
         const ctx = canvas.getContext("2d");
+        const musicDock = document.querySelector(".music-dock");
         const palette = { white: "#f7f9fb", silver: "#aeb4ba" };
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -84,7 +119,43 @@
         let pointer = { x: 0.5, y: 0.5 };
         let comet = { x: 0, y: 0, vx: 0, vy: 0, visible: false };
         let cometTrail = [];
+        let musicPlayer = null;
+        let musicReady = false;
+        let musicRequested = false;
         let frame = 0;
+
+        window.onYouTubeIframeAPIReady = () => {
+          musicPlayer = new window.YT.Player("music-player", {
+            width: 200,
+            height: 200,
+            videoId: "xFyUnj_jT3s",
+            playerVars: {
+              autoplay: 0,
+              controls: 1,
+              disablekb: 0,
+              fs: 0,
+              loop: 1,
+              playlist: "xFyUnj_jT3s",
+              playsinline: 1,
+              rel: 0,
+            },
+            events: {
+              onReady(event) {
+                musicReady = true;
+                event.target.setVolume(38);
+                if (musicRequested) {
+                  event.target.unMute();
+                  event.target.playVideo();
+                }
+              },
+            },
+          });
+        };
+
+        const youtubeApi = document.createElement("script");
+        youtubeApi.src = "https://www.youtube.com/iframe_api";
+        youtubeApi.async = true;
+        document.head.appendChild(youtubeApi);
 
         function rgb(hex) {
           const value = hex.replace("#", "");
@@ -235,8 +306,8 @@
 
         function drawMessage(now, activeHole) {
           const message = "AWAY FROM THE WORLD";
-          const fontSize = width < 560 ? 9.5 : 11;
-          const letterSpacing = width < 560 ? 3.2 : 5.8;
+          const fontSize = width < 560 ? 11.5 : 15;
+          const letterSpacing = width < 560 ? 3.5 : 7.2;
           const characters = [...message];
           ctx.font = `500 ${fontSize}px Arial, sans-serif`;
           ctx.textAlign = "left";
@@ -245,8 +316,9 @@
           const widths = characters.map((character) => ctx.measureText(character).width);
           const totalWidth = widths.reduce((total, value) => total + value, 0) + letterSpacing * (characters.length - 1);
           let cursorX = (width - totalWidth) / 2;
-          const baseY = height * 0.62;
-          const pulse = 0.17 + Math.sin(now * 0.00075) * 0.035;
+          const baseY = height * 0.53;
+          const pulse = 0.27 + Math.sin(now * 0.00075) * 0.045;
+          const motion = reduceMotion.matches ? 0 : 1;
           const farthestCorner = activeHole
             ? Math.hypot(
                 Math.max(activeHole.x, width - activeHole.x),
@@ -257,10 +329,11 @@
           characters.forEach((character, index) => {
             const characterWidth = widths[index];
             const baseX = cursorX + characterWidth / 2;
-            let drawX = baseX;
-            let drawY = baseY;
-            let alpha = pulse * fieldOpacity;
-            let rotation = 0;
+            const wave = now * 0.00135 + index * 0.62;
+            let drawX = baseX + Math.cos(wave * 0.72) * 0.65 * motion;
+            let drawY = baseY + Math.sin(wave) * 2.1 * motion;
+            let alpha = (pulse + Math.sin(wave) * 0.04 * motion) * fieldOpacity;
+            let rotation = Math.sin(wave * 0.84) * 0.018 * motion;
             let scale = 1;
 
             if (activeHole) {
@@ -503,9 +576,20 @@
         }
 
         function press(event) {
+          startMusic();
           if (reduceMotion.matches) return;
           const rect = canvas.getBoundingClientRect();
           openBlackHole(event.clientX - rect.left, event.clientY - rect.top);
+        }
+
+        function startMusic() {
+          if (musicRequested) return;
+          musicRequested = true;
+          musicDock.classList.add("is-active");
+          if (!musicReady || !musicPlayer) return;
+          musicPlayer.unMute();
+          musicPlayer.setVolume(38);
+          musicPlayer.playVideo();
         }
 
         function leave() {

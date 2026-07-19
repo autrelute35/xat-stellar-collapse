@@ -143,9 +143,15 @@
               onReady(event) {
                 musicReady = true;
                 event.target.setVolume(38);
+                event.target.mute();
                 if (musicRequested) {
-                  event.target.unMute();
                   event.target.playVideo();
+                  event.target.unMute();
+                }
+              },
+              onStateChange(event) {
+                if (musicRequested && event.data === window.YT.PlayerState.PLAYING && event.target.isMuted()) {
+                  event.target.unMute();
                 }
               },
             },
@@ -587,9 +593,9 @@
           musicRequested = true;
           musicDock.classList.add("is-active");
           if (!musicReady || !musicPlayer) return;
-          musicPlayer.unMute();
           musicPlayer.setVolume(38);
           musicPlayer.playVideo();
+          musicPlayer.unMute();
         }
 
         function leave() {

@@ -35,7 +35,7 @@
         min-height: 320px;
         overflow: hidden;
         background: #010102;
-        cursor: crosshair;
+        cursor: none;
         isolation: isolate;
         touch-action: none;
       }
@@ -80,8 +80,10 @@
         let fieldOpacity = 1;
         let last = performance.now();
         let spawn = 0;
-        let nextSpawn = random(1.4, 2.8);
+        let nextSpawn = random(1.1, 2.15);
         let pointer = { x: 0.5, y: 0.5 };
+        let comet = { x: 0, y: 0, vx: 0, vy: 0, visible: false };
+        let cometTrail = [];
         let frame = 0;
 
         function rgb(hex) {
@@ -115,7 +117,7 @@
         }
 
         function makeField() {
-          const starCount = Math.round((width * height) / 880);
+          const starCount = Math.round((width * height) / 680);
           stars = Array.from({ length: starCount }, () => {
             const depth = Math.random();
             return {
@@ -140,7 +142,8 @@
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           blackHole = null;
           fieldOpacity = 1;
-          canvas.style.cursor = "crosshair";
+          comet = { x: width / 2, y: height / 2, vx: 0, vy: 0, visible: false };
+          cometTrail = [];
           makeField();
         }
 
@@ -168,8 +171,8 @@
             spin: Math.random() > 0.5 ? 1 : -1,
           };
           meteors = [];
+          cometTrail = [];
           spawn = 0;
-          canvas.style.cursor = "none";
         }
 
         function drawStars(now, activeHole) {
@@ -250,6 +253,58 @@
           ctx.lineTo(tailX, tailY);
           ctx.stroke();
           ctx.shadowBlur = 0;
+        }
+
+        function drawComet(dt) {
+          for (const point of cometTrail) point.life -= dt * 3.2;
+          cometTrail = cometTrail.filter((point) => point.life > 0);
+          if (!comet.visible || blackHole) return;
+
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          ctx.lineCap = "round";
+
+          for (let index = 1; index < cometTrail.length; index += 1) {
+            const previous = cometTrail[index - 1];
+            const point = cometTrail[index];
+            const progress = index / cometTrail.length;
+            const alpha = point.life * progress * 0.42;
+            ctx.strokeStyle = rgba(palette.silver, alpha);
+            ctx.lineWidth = 0.45 + progress * 1.35;
+            ctx.beginPath();
+            ctx.moveTo(previous.x, previous.y);
+            ctx.lineTo(point.x, point.y);
+            ctx.stroke();
+          }
+
+          const speed = Math.hypot(comet.vx, comet.vy);
+          const angle = speed > 0.2 ? Math.atan2(comet.vy, comet.vx) : -Math.PI / 4;
+          comet.vx *= Math.pow(0.012, dt);
+          comet.vy *= Math.pow(0.012, dt);
+
+          ctx.translate(comet.x, comet.y);
+          ctx.rotate(angle);
+          ctx.fillStyle = palette.white;
+          ctx.shadowBlur = 13;
+          ctx.shadowColor = palette.white;
+          ctx.beginPath();
+          ctx.moveTo(7.5, 0);
+          ctx.lineTo(2, 1.7);
+          ctx.lineTo(0, 6.8);
+          ctx.lineTo(-1.7, 1.7);
+          ctx.lineTo(-5.4, 0);
+          ctx.lineTo(-1.7, -1.7);
+          ctx.lineTo(0, -6.8);
+          ctx.lineTo(2, -1.7);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(0, 0, 1.25, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
         }
 
         function drawBlackHole(hole) {
@@ -334,7 +389,7 @@
             if (spawn > nextSpawn) {
               makeMeteor();
               spawn = 0;
-              nextSpawn = random(1.4, 2.8);
+              nextSpawn = random(1.1, 2.15);
             }
 
             for (const meteor of meteors) {
@@ -348,6 +403,8 @@
             meteors.slice(0, 2).forEach(drawMeteor);
           }
 
+          drawComet(dt);
+
           if (blackHole) {
             blackHole.age += dt;
             drawBlackHole(blackHole);
@@ -355,8 +412,7 @@
               blackHole = null;
               fieldOpacity = 0;
               spawn = 0;
-              nextSpawn = random(1.4, 2.8);
-              canvas.style.cursor = "crosshair";
+              nextSpawn = random(1.1, 2.15);
               makeField();
             }
           }
@@ -366,9 +422,22 @@
 
         function move(event) {
           const rect = canvas.getBoundingClientRect();
+          const nextX = event.clientX - rect.left;
+          const nextY = event.clientY - rect.top;
+          if (comet.visible) {
+            comet.vx = comet.vx * 0.46 + (nextX - comet.x) * 0.54;
+            comet.vy = comet.vy * 0.46 + (nextY - comet.y) * 0.54;
+            if (Math.hypot(nextX - comet.x, nextY - comet.y) > 0.35) {
+              cometTrail.push({ x: comet.x, y: comet.y, life: 1 });
+              cometTrail = cometTrail.slice(-20);
+            }
+          }
+          comet.x = nextX;
+          comet.y = nextY;
+          comet.visible = true;
           pointer = {
-            x: (event.clientX - rect.left) / rect.width,
-            y: (event.clientY - rect.top) / rect.height,
+            x: nextX / rect.width,
+            y: nextY / rect.height,
           };
         }
 
@@ -380,10 +449,12 @@
 
         function leave() {
           pointer = { x: 0.5, y: 0.5 };
+          comet.visible = false;
+          cometTrail = [];
         }
 
         resize();
-        for (let index = 0; index < 3; index += 1) makeMeteor(true);
+        for (let index = 0; index < 4; index += 1) makeMeteor(true);
         window.addEventListener("resize", resize);
         canvas.addEventListener("pointermove", move);
         canvas.addEventListener("pointerdown", press);

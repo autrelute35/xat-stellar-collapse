@@ -167,7 +167,7 @@
             x,
             y,
             age: 0,
-            max: 4.6,
+            max: 6.5,
             spin: Math.random() > 0.5 ? 1 : -1,
           };
           meteors = [];
@@ -201,8 +201,8 @@
               const dx = star.x - activeHole.x;
               const dy = star.y - activeHole.y;
               const distance = Math.max(1, Math.hypot(dx, dy));
-              const delay = (distance / farthestCorner) * 0.92;
-              const travel = clamp((activeHole.age - 0.38 - delay) / 1.72);
+              const delay = (distance / farthestCorner) * 1.12;
+              const travel = clamp((activeHole.age - 0.42 - delay) / 2.5);
               const collapse = easeInCubic(travel);
               angle = Math.atan2(dy, dx) + activeHole.spin * collapse * (3.2 + star.depth * 4.8);
               const radius = distance * (1 - collapse);
@@ -231,6 +231,66 @@
             }
             ctx.fill();
           }
+        }
+
+        function drawMessage(now, activeHole) {
+          const message = "AWAY FROM THE WORLD";
+          const fontSize = width < 560 ? 9.5 : 11;
+          const letterSpacing = width < 560 ? 3.2 : 5.8;
+          const characters = [...message];
+          ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+
+          const widths = characters.map((character) => ctx.measureText(character).width);
+          const totalWidth = widths.reduce((total, value) => total + value, 0) + letterSpacing * (characters.length - 1);
+          let cursorX = (width - totalWidth) / 2;
+          const baseY = height * 0.62;
+          const pulse = 0.17 + Math.sin(now * 0.00075) * 0.035;
+          const farthestCorner = activeHole
+            ? Math.hypot(
+                Math.max(activeHole.x, width - activeHole.x),
+                Math.max(activeHole.y, height - activeHole.y),
+              )
+            : 1;
+
+          characters.forEach((character, index) => {
+            const characterWidth = widths[index];
+            const baseX = cursorX + characterWidth / 2;
+            let drawX = baseX;
+            let drawY = baseY;
+            let alpha = pulse * fieldOpacity;
+            let rotation = 0;
+            let scale = 1;
+
+            if (activeHole) {
+              const dx = baseX - activeHole.x;
+              const dy = baseY - activeHole.y;
+              const distance = Math.max(1, Math.hypot(dx, dy));
+              const delay = (distance / farthestCorner) * 1.12;
+              const travel = clamp((activeHole.age - 0.42 - delay) / 2.5);
+              const collapse = easeInCubic(travel);
+              const angle = Math.atan2(dy, dx) + activeHole.spin * collapse * (3.6 + index * 0.08);
+              const radius = distance * (1 - collapse);
+              drawX = activeHole.x + Math.cos(angle) * radius;
+              drawY = activeHole.y + Math.sin(angle) * radius;
+              alpha *= 1 - travel ** 1.45;
+              rotation = activeHole.spin * collapse * (0.6 + index * 0.035);
+              scale = 1 - travel * 0.78;
+            }
+
+            if (character !== " " && alpha > 0.01) {
+              ctx.save();
+              ctx.translate(drawX, drawY);
+              ctx.rotate(rotation);
+              ctx.scale(scale, scale);
+              ctx.fillStyle = rgba(palette.white, alpha);
+              ctx.fillText(character, -characterWidth / 2, 0);
+              ctx.restore();
+            }
+
+            cursorX += characterWidth + letterSpacing;
+          });
         }
 
         function drawMeteor(meteor) {
@@ -308,9 +368,9 @@
         }
 
         function drawBlackHole(hole) {
-          const opening = easeOutCubic(clamp(hole.age / 0.46));
-          const feeding = clamp((hole.age - 0.28) / 2.4);
-          const engulfing = easeInCubic(clamp((hole.age - 2.65) / 0.95));
+          const opening = easeOutCubic(clamp(hole.age / 0.58));
+          const feeding = clamp((hole.age - 0.34) / 3.35);
+          const engulfing = easeInCubic(clamp((hole.age - 3.9) / 1.2));
           const farthestCorner = Math.hypot(
             Math.max(hole.x, width - hole.x),
             Math.max(hole.y, height - hole.y),
@@ -383,6 +443,7 @@
             fieldOpacity = Math.min(1, fieldOpacity + dt / 1.2);
           }
           drawStars(now, blackHole);
+          drawMessage(now, blackHole);
 
           if (!reduceMotion.matches && !blackHole) {
             spawn += dt;

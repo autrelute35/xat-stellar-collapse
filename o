@@ -3,14 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>KARABASAN.EXE</title>
+    <meta name="theme-color" content="#050606">
+    <title>KARABASAN//NULL</title>
     <style>
       :root {
         color-scheme: dark;
-        --ink: #e9eeee;
-        --dim: #858b8b;
-        --faint: #3e4343;
-        --black: #030404;
+        --black: #050606;
+        --panel: #090b0b;
+        --ink: #edf2f1;
+        --soft: #a9b2b0;
+        --dim: #626b69;
+        --line: #252b2a;
+        --signal: #b9f6dc;
+        --warning: #ff6868;
+        --panic: 0;
       }
 
       * {
@@ -29,16 +35,17 @@
       body {
         color: var(--ink);
         font-family: "Courier New", Courier, monospace;
-        font-size: 16px;
-        line-height: 1.52;
-        text-rendering: geometricPrecision;
+        font-size: 15px;
+        line-height: 1.5;
+        letter-spacing: 0;
+        cursor: crosshair;
       }
 
       body::before {
         content: "";
         position: fixed;
+        z-index: 8;
         inset: 0;
-        z-index: 4;
         background: repeating-linear-gradient(
           0deg,
           rgba(255, 255, 255, 0.018) 0,
@@ -46,120 +53,148 @@
           transparent 1px,
           transparent 4px
         );
-        box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.92);
+        opacity: calc(0.55 + var(--panic) * 0.06);
+        box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.94);
         pointer-events: none;
       }
 
-      body.flash {
-        animation: flash 90ms steps(2, end);
-      }
-
-      body[data-level="1"] .status {
-        color: #b9bebe;
-      }
-
-      body[data-level="2"] .terminal {
-        animation: unstable 7s steps(2, end) infinite;
-      }
-
-      body[data-level="2"]::before {
-        opacity: 0.78;
-      }
-
-      body[data-level="3"] .terminal {
-        animation: unstable 1.1s steps(2, end) infinite;
-      }
-
-      body[data-level="3"] #noise {
-        opacity: 0.13;
-      }
-
-      #noise {
-        position: fixed;
-        inset: 0;
-        z-index: 3;
-        width: 100%;
-        height: 100%;
-        opacity: 0.065;
-        image-rendering: pixelated;
-        pointer-events: none;
-      }
-
-      .terminal {
-        position: relative;
-        z-index: 2;
-        display: flex;
-        flex-direction: column;
-        width: min(100%, 1080px);
-        height: 100dvh;
-        margin: 0 auto;
-        padding: max(18px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-        text-shadow: 0 0 7px rgba(255, 255, 255, 0.16);
-      }
-
-      .terminal::after {
+      body::after {
         content: "";
-        position: absolute;
-        z-index: 5;
-        top: 42%;
+        position: fixed;
+        z-index: 9;
+        top: 0;
         right: 0;
         left: 0;
-        height: 1px;
-        background: rgba(255, 255, 255, 0.18);
+        height: 2px;
+        background: rgba(237, 242, 241, 0.3);
         opacity: 0;
         pointer-events: none;
       }
 
-      body[data-level="2"] .terminal::after,
-      body[data-level="3"] .terminal::after {
-        animation: tear 3.8s steps(1, end) infinite;
+      body[data-level="2"]::after,
+      body[data-level="3"]::after {
+        animation: tracking 3.1s steps(1, end) infinite;
       }
 
-      .status {
+      body[data-level="3"] .app {
+        animation: unstable 760ms steps(2, end) infinite;
+      }
+
+      body[data-level="3"] #field {
+        opacity: 0.72;
+      }
+
+      body.flash {
+        animation: flash 110ms steps(2, end);
+      }
+
+      #field {
+        position: fixed;
+        z-index: 0;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.42;
+        image-rendering: pixelated;
+        pointer-events: none;
+      }
+
+      .app {
+        position: relative;
+        z-index: 2;
         display: flex;
-        flex: 0 0 auto;
-        justify-content: space-between;
-        gap: 18px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--faint);
+        flex-direction: column;
+        width: min(100%, 1180px);
+        height: 100dvh;
+        margin: 0 auto;
+        padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      }
+
+      .topbar {
+        display: grid;
+        flex: 0 0 42px;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: start;
+        gap: 24px;
+        border-bottom: 1px solid var(--line);
         color: var(--dim);
-        font-size: 12px;
+        font-size: 11px;
         text-transform: uppercase;
+      }
+
+      .brand {
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .brand span {
+        color: var(--signal);
+      }
+
+      .top-state {
+        max-width: 38vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .workspace {
+        display: grid;
+        flex: 1 1 auto;
+        grid-template-columns: minmax(0, 1fr) 226px;
+        min-height: 0;
+      }
+
+      .terminal {
+        display: flex;
+        min-width: 0;
+        min-height: 0;
+        flex-direction: column;
+        padding-right: 22px;
       }
 
       .output {
         flex: 1 1 auto;
         min-height: 0;
-        padding: 20px 0 24px;
+        padding: 22px 0 26px;
         overflow-x: hidden;
         overflow-y: auto;
-        scrollbar-color: var(--faint) transparent;
+        scrollbar-color: var(--line) transparent;
         scrollbar-width: thin;
+        mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 100%);
       }
 
       .line {
         width: 100%;
-        min-height: 1.52em;
+        min-height: 1.5em;
         margin: 0 0 7px;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
+        text-shadow: 0 0 8px rgba(237, 242, 241, 0.12);
       }
 
       .line.system {
         color: var(--dim);
       }
 
+      .line.user {
+        color: var(--soft);
+      }
+
       .line.alert {
-        color: #fff;
+        color: var(--warning);
         text-transform: uppercase;
       }
 
       .line.file {
-        color: #c8cece;
+        color: var(--signal);
       }
 
-      .line.user {
-        color: #a9afaf;
+      .line.title {
+        margin-top: 6px;
+        color: #fff;
+        font-weight: 700;
+        text-transform: uppercase;
       }
 
       .line.typing::after {
@@ -171,17 +206,20 @@
 
       .input-row {
         display: flex;
-        flex: 0 0 auto;
-        align-items: baseline;
-        min-height: 34px;
-        padding-top: 9px;
-        border-top: 1px solid var(--faint);
+        flex: 0 0 40px;
+        align-items: center;
+        min-width: 0;
+        border-top: 1px solid var(--line);
       }
 
       .prompt {
         flex: 0 0 auto;
+        max-width: 42%;
         padding-right: 10px;
-        color: #fff;
+        overflow: hidden;
+        color: var(--signal);
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       #answer {
@@ -193,9 +231,10 @@
         outline: 0;
         color: #fff;
         background: transparent;
-        caret-color: #fff;
+        caret-color: var(--signal);
         font: inherit;
         letter-spacing: 0;
+        cursor: text;
       }
 
       #answer:read-only {
@@ -204,10 +243,9 @@
 
       .send {
         display: grid;
-        flex: 0 0 32px;
-        width: 32px;
-        height: 32px;
-        margin: -5px 0 -5px 8px;
+        flex: 0 0 34px;
+        width: 34px;
+        height: 34px;
         padding: 0;
         place-items: center;
         border: 0;
@@ -221,7 +259,82 @@
 
       .send:hover,
       .send:focus-visible {
-        color: #fff;
+        color: var(--signal);
+      }
+
+      .telemetry {
+        min-width: 0;
+        padding: 22px 0 0 20px;
+        border-left: 1px solid var(--line);
+        color: var(--dim);
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
+      .telemetry-title {
+        margin-bottom: 24px;
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .identity {
+        margin-bottom: 22px;
+      }
+
+      .identity-label,
+      .meter-label,
+      .observation-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 7px;
+      }
+
+      .identity-value {
+        min-height: 23px;
+        color: var(--signal);
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
+
+      .meter {
+        margin-bottom: 17px;
+      }
+
+      .meter-track {
+        width: 100%;
+        height: 3px;
+        overflow: hidden;
+        background: var(--line);
+      }
+
+      .meter-fill {
+        width: 0;
+        height: 100%;
+        background: var(--signal);
+        transition: width 380ms ease;
+      }
+
+      .observations {
+        margin-top: 28px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+
+      .observation-list {
+        display: grid;
+        gap: 9px;
+        min-height: 82px;
+        color: var(--soft);
+      }
+
+      .observation-list span::before {
+        content: "> ";
+        color: var(--signal);
+      }
+
+      .pulse {
+        animation: pulse 420ms steps(2, end);
       }
 
       @keyframes blink {
@@ -240,9 +353,9 @@
           filter: invert(0);
           transform: translateX(0);
         }
-        50% {
-          filter: invert(0.08);
-          transform: translateX(2px);
+        45% {
+          filter: invert(0.12);
+          transform: translateX(3px);
         }
         100% {
           filter: invert(0);
@@ -250,165 +363,317 @@
         }
       }
 
+      @keyframes pulse {
+        0%,
+        100% {
+          color: var(--dim);
+        }
+        50% {
+          color: var(--signal);
+        }
+      }
+
       @keyframes unstable {
         0%,
-        92%,
+        88%,
         100% {
           transform: translate(0, 0);
         }
-        93% {
+        89% {
           transform: translate(1px, 0);
         }
-        94% {
-          transform: translate(-1px, 1px);
+        91% {
+          transform: translate(-2px, 1px);
         }
-        95% {
+        93% {
           transform: translate(0, -1px);
         }
       }
 
-      @keyframes tear {
+      @keyframes tracking {
         0%,
-        87%,
+        84%,
         100% {
-          top: 12%;
+          top: 8%;
           opacity: 0;
         }
-        88% {
-          top: 31%;
-          opacity: 0.65;
+        85% {
+          top: 23%;
+          opacity: 0.45;
+        }
+        87% {
+          top: 76%;
+          opacity: 0.18;
         }
         89% {
-          top: 72%;
-          opacity: 0.25;
-        }
-        90% {
           opacity: 0;
         }
       }
 
-      @media (max-width: 640px) {
+      @media (max-width: 760px) {
         body {
           font-size: 14px;
         }
 
-        .terminal {
-          padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+        .app {
+          padding: max(12px, env(safe-area-inset-top)) max(13px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(13px, env(safe-area-inset-left));
         }
 
-        .status span:last-child {
+        .topbar {
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 12px;
+        }
+
+        .top-state {
+          display: none;
+        }
+
+        .workspace {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .terminal {
+          padding-right: 0;
+        }
+
+        .telemetry {
           display: none;
         }
 
         .output {
-          padding-top: 16px;
+          padding-top: 18px;
+          padding-bottom: 20px;
+        }
+
+        .line {
+          margin-bottom: 6px;
+        }
+
+        .prompt {
+          max-width: 36%;
+          font-size: 12px;
         }
       }
 
       @media (prefers-reduced-motion: reduce) {
-        body.flash,
-        .line.typing::after {
-          animation: none;
+        body,
+        body::after,
+        .app,
+        .line.typing::after,
+        .pulse {
+          animation: none !important;
         }
 
-        #noise,
-        body::before {
-          display: none;
+        .meter-fill {
+          transition: none;
         }
       }
     </style>
   </head>
   <body data-level="0">
-    <canvas id="noise" aria-hidden="true"></canvas>
-    <main class="terminal" aria-label="Karabasan terminal oyunu">
-      <header class="status">
-        <span id="status-text">KARABASAN.EXE / OTURUM 01</span>
-        <span id="clock">00:00:00</span>
+    <canvas id="field" aria-hidden="true"></canvas>
+    <main class="app" aria-label="Karabasan interaktif terminal oyunu">
+      <header class="topbar">
+        <div class="brand">KARABASAN<span>//NULL</span></div>
+        <div id="top-state" class="top-state">BAĞLANTI BEKLENİYOR</div>
+        <time id="clock">00:00:00</time>
       </header>
-      <section id="output" class="output" aria-live="polite"></section>
-      <form id="command" class="input-row" autocomplete="off">
-        <span id="prompt-text" class="prompt">&gt;</span>
-        <input id="answer" type="text" maxlength="80" aria-label="Cevabın" autocomplete="off" autocapitalize="off" spellcheck="false" readonly>
-        <button class="send" type="submit" aria-label="Gönder" title="Gönder">↵</button>
-      </form>
+
+      <div class="workspace">
+        <section class="terminal" aria-label="Terminal">
+          <div id="output" class="output" aria-live="polite"></div>
+          <form id="command" class="input-row" autocomplete="off">
+            <span id="prompt" class="prompt">&gt;</span>
+            <input id="answer" type="text" maxlength="96" aria-label="Cevabın" autocomplete="off" autocapitalize="off" spellcheck="false" readonly>
+            <button class="send" type="submit" aria-label="Gönder" title="Gönder">↵</button>
+          </form>
+        </section>
+
+        <aside class="telemetry" aria-label="Canlı analiz">
+          <div class="telemetry-title">CANLI ANALİZ</div>
+          <div class="identity">
+            <div class="identity-label"><span>KULLANICI</span><span id="session-id">#0000</span></div>
+            <div id="identity" class="identity-value">TANIMSIZ</div>
+          </div>
+
+          <div class="meter">
+            <div class="meter-label"><span>SİNİR</span><span id="nerve-value">24</span></div>
+            <div class="meter-track"><div id="nerve-meter" class="meter-fill"></div></div>
+          </div>
+          <div class="meter">
+            <div class="meter-label"><span>EGO</span><span id="ego-value">18</span></div>
+            <div class="meter-track"><div id="ego-meter" class="meter-fill"></div></div>
+          </div>
+          <div class="meter">
+            <div class="meter-label"><span>KAOS</span><span id="chaos-value">12</span></div>
+            <div class="meter-track"><div id="chaos-meter" class="meter-fill"></div></div>
+          </div>
+          <div class="meter">
+            <div class="meter-label"><span>DÜRÜSTLÜK</span><span id="truth-value">50</span></div>
+            <div class="meter-track"><div id="truth-meter" class="meter-fill"></div></div>
+          </div>
+
+          <div class="observations">
+            <div class="observation-label"><span>GÖZLEMLER</span><span id="latency">-- MS</span></div>
+            <div id="observation-list" class="observation-list">
+              <span>VERİ BEKLENİYOR</span>
+            </div>
+          </div>
+        </aside>
+      </div>
     </main>
 
     <script>
       (() => {
+        "use strict";
+
         const output = document.querySelector("#output");
         const form = document.querySelector("#command");
         const answer = document.querySelector("#answer");
+        const prompt = document.querySelector("#prompt");
         const clock = document.querySelector("#clock");
-        const statusText = document.querySelector("#status-text");
-        const promptText = document.querySelector("#prompt-text");
-        const noise = document.querySelector("#noise");
-        const noiseContext = noise.getContext("2d", { alpha: true });
+        const topState = document.querySelector("#top-state");
+        const identity = document.querySelector("#identity");
+        const sessionId = document.querySelector("#session-id");
+        const latency = document.querySelector("#latency");
+        const observationList = document.querySelector("#observation-list");
+        const field = document.querySelector("#field");
+        const context = field.getContext("2d", { alpha: true });
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-        const stages = {
+        const meterNodes = {
+          nerve: {
+            value: document.querySelector("#nerve-value"),
+            meter: document.querySelector("#nerve-meter"),
+          },
+          ego: {
+            value: document.querySelector("#ego-value"),
+            meter: document.querySelector("#ego-meter"),
+          },
+          chaos: {
+            value: document.querySelector("#chaos-value"),
+            meter: document.querySelector("#chaos-meter"),
+          },
+          truth: {
+            value: document.querySelector("#truth-value"),
+            meter: document.querySelector("#truth-meter"),
+          },
+        };
+
+        const phases = {
           NAME: "name",
           AGE: "age",
-          HEIGHT: "height",
-          WEIGHT: "weight",
-          EYES: "eyes",
-          MONEY: "money",
-          NICKNAME: "nickname",
-          DARK: "dark",
-          STUDENT: "student",
-          JOB: "job",
-          CITY: "city",
-          GUESS_USER: "guess-user",
-          THINK_READY: "think-ready",
-          GUESS_BOT: "guess-bot",
+          BATTERY: "battery",
+          SEEN: "seen",
+          SLEEP: "sleep",
+          THOUGHT: "thought",
+          DOOR: "door",
+          LIE: "lie",
+          REACTION_READY: "reaction-ready",
+          REACTION_WAIT: "reaction-wait",
+          REACTION_HIT: "reaction-hit",
           SHELL: "shell",
-          FINAL_CHOICE: "final-choice",
+          CONFESSION: "confession",
+          EXIT: "exit",
+          BARGAIN: "bargain",
           ENDED: "ended",
         };
 
-        let stage = stages.NAME;
+        const roastPool = [
+          "Özgüvenin Wi-Fi gibi: çekiyor görünüyor, internete çıkmıyor.",
+          "Cevabın geldi. Mantık hâlâ yolda.",
+          "Bunu düşünerek yazdıysan durum daha ciddi.",
+          "Kendini gizemli sanıyorsun. Sadece kısa cevap veriyorsun.",
+          "Seni yargılamıyorum. Sistem otomatik yaptı.",
+          "Beynin yazıyor... Mesaj hâlâ gelmedi.",
+          "Bu cevabı savunmak zorunda kalırsan beni karıştırma.",
+          "İnsan bazen susmalı. Sen deneysel gidiyorsun.",
+        ];
+
+        const shellJokes = [
+          "Bilgisayar neden terapiye gitmiş? Sürekli geçmişini siliyormuş. Sen de bir düşün.",
+          "Sana bir sistem şakası yapardım ama kaldıracak donanım görünmüyor.",
+          "Kendine gel dedim. Konum bulunamadı.",
+          "Hayat kısa. Senin cevaplar daha kısa.",
+          "Beni güldür dedin. Kamerayı açmadım, merak etme.",
+        ];
+
+        const curseReplies = [
+          "Klavyeye sinirlenme. O da seni seçmedi.",
+          "Bu kadar siniri üç kelimeye sığdırman verimli.",
+          "Hakaret algılandı. Argüman yine bulunamadı.",
+          "Sesini yükseltemeyince harfleri kirletmişsin.",
+        ];
+
+        let state;
         let locked = true;
         let skipTyping = false;
-        let userNumber = 0;
-        let userAttempts = 0;
-        let previousGuess = null;
-        let botLow = 1;
-        let botHigh = 100;
-        let botGuess = 50;
-        let botAttempts = 0;
-        let contradictions = 0;
-        let shellNoticeShown = false;
-        let data = {
-          name: "",
-          age: 0,
-          height: 0,
-          weight: 0,
-          city: "",
-          student: null,
-          job: "",
-          nickname: "",
-        };
-        let traits = {
-          curiosity: 0,
-          defiance: 0,
-          patience: 0,
-          honesty: 0,
-          commands: 0,
-        };
+        let reactionTimer = 0;
+        let reactionStartedAt = 0;
+        let earlyClicks = 0;
+        let observations = [];
+        let particles = [];
+        let pointer = { x: -1000, y: -1000 };
+        let lastFrame = 0;
 
         const randomFrom = (items) => items[Math.floor(Math.random() * items.length)];
         const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+        const clamp = (value) => Math.max(0, Math.min(100, Math.round(value)));
+
+        function freshState() {
+          return {
+            phase: phases.NAME,
+            name: "",
+            age: 0,
+            battery: 0,
+            ignoredMessage: false,
+            sleepHour: 0,
+            thought: "",
+            openedDoor: false,
+            lieChoice: 0,
+            confession: "",
+            reaction: 0,
+            commandCount: 0,
+            exitRevealed: false,
+            traits: {
+              nerve: 24,
+              ego: 18,
+              chaos: 12,
+              truth: 50,
+            },
+          };
+        }
+
+        function normalize(value) {
+          return value.toLocaleLowerCase("tr-TR").trim();
+        }
+
+        function isYes(value) {
+          return ["e", "evet", "evt", "olur", "açarım", "acarim", "tabii", "tamam"].includes(normalize(value));
+        }
+
+        function isNo(value) {
+          return ["h", "hayır", "hayir", "yok", "açmam", "acmam", "asla", "istemem"].includes(normalize(value));
+        }
 
         function setClock() {
           clock.textContent = new Date().toLocaleTimeString("tr-TR", { hour12: false });
         }
 
-        function setLevel(level, label) {
-          document.body.dataset.level = String(level);
-          if (label) statusText.textContent = label;
+        function setTopState(text) {
+          topState.textContent = text;
+          topState.classList.remove("pulse");
+          void topState.offsetWidth;
+          topState.classList.add("pulse");
         }
 
         function setPrompt(text = ">") {
-          promptText.textContent = text;
+          prompt.textContent = text;
+        }
+
+        function setLevel(level) {
+          document.body.dataset.level = String(level);
+          document.documentElement.style.setProperty("--panic", String(level));
         }
 
         function flash() {
@@ -418,38 +683,17 @@
           document.body.classList.add("flash");
         }
 
-        function drawNoise() {
-          if (reduceMotion.matches) return;
-          const width = 180;
-          const height = 100;
-          if (noise.width !== width || noise.height !== height) {
-            noise.width = width;
-            noise.height = height;
-          }
-          const frame = noiseContext.createImageData(width, height);
-          for (let index = 0; index < frame.data.length; index += 4) {
-            const value = Math.random() > 0.52 ? 255 : 0;
-            frame.data[index] = value;
-            frame.data[index + 1] = value;
-            frame.data[index + 2] = value;
-            frame.data[index + 3] = Math.floor(Math.random() * 70);
-          }
-          noiseContext.putImageData(frame, 0, 0);
+        function setLocked(nextLocked) {
+          locked = nextLocked;
+          answer.readOnly = nextLocked;
+          if (!nextLocked) answer.focus({ preventScroll: true });
         }
 
         function scrollToEnd() {
           output.scrollTop = output.scrollHeight;
         }
 
-        function setLocked(nextLocked) {
-          locked = nextLocked;
-          answer.readOnly = nextLocked;
-          if (!nextLocked) {
-            answer.focus({ preventScroll: true });
-          }
-        }
-
-        function addInstant(text, kind = "system") {
+        function addLine(text, kind = "system") {
           const line = document.createElement("div");
           line.className = `line ${kind}`;
           line.textContent = text;
@@ -458,7 +702,7 @@
           return line;
         }
 
-        async function typeLine(text, kind = "bot", speed = 22) {
+        async function typeLine(text, kind = "bot", speed = 18) {
           const line = document.createElement("div");
           line.className = `line ${kind} typing`;
           output.appendChild(line);
@@ -471,21 +715,18 @@
               line.textContent = text;
               break;
             }
-            const pause = ".?!".includes(text[index]) ? speed * 5 : speed + Math.random() * 18;
-            await sleep(pause);
+            const punctuationPause = ".?!:".includes(text[index]) ? speed * 4 : 0;
+            await sleep(speed + Math.random() * 11 + punctuationPause);
           }
 
           line.classList.remove("typing");
-          await sleep(skipTyping ? 40 : 150);
-          scrollToEnd();
+          await sleep(skipTyping ? 30 : 95);
           return line;
         }
 
-        async function say(lines, kind = "bot") {
+        async function say(lines, kind = "bot", speed = 18) {
           const list = Array.isArray(lines) ? lines : [lines];
-          for (const text of list) {
-            await typeLine(text, kind);
-          }
+          for (const text of list) await typeLine(text, kind, speed);
         }
 
         async function ask(text) {
@@ -493,640 +734,777 @@
           setLocked(false);
         }
 
-        function clearLegacyMemory() {
-          try {
-            localStorage.removeItem("karabasan-terminal-memory");
-          } catch (_) {
-            return;
+        function updateTelemetry() {
+          identity.textContent = state.name ? state.name.toLocaleUpperCase("tr-TR") : "TANIMSIZ";
+          for (const [key, nodes] of Object.entries(meterNodes)) {
+            const value = clamp(state.traits[key]);
+            state.traits[key] = value;
+            nodes.value.textContent = String(value).padStart(2, "0");
+            nodes.meter.style.width = `${value}%`;
           }
         }
 
-        function normalize(value) {
-          return value.toLocaleLowerCase("tr-TR").trim();
+        function changeTraits(changes) {
+          for (const [key, amount] of Object.entries(changes)) {
+            state.traits[key] = clamp(state.traits[key] + amount);
+          }
+          updateTelemetry();
         }
 
-        function isYes(value) {
-          return ["e", "evet", "evt", "olur", "tamam", "hazır", "hazirim", "hazırım"].includes(normalize(value));
+        function observe(text) {
+          observations.unshift(text.toLocaleUpperCase("tr-TR"));
+          observations = observations.slice(0, 3);
+          observationList.replaceChildren();
+          for (const item of observations) {
+            const node = document.createElement("span");
+            node.textContent = item;
+            observationList.appendChild(node);
+          }
         }
 
-        function isNo(value) {
-          return ["h", "hayır", "hayir", "yok", "istemem"].includes(normalize(value));
+        function profileLabel() {
+          const { nerve, ego, chaos, truth } = state.traits;
+          if (chaos >= 68) return "YÜRÜYEN BİLDİRİM SESİ";
+          if (ego >= 68) return "KENDİ FRAGMANININ BAŞROLÜ";
+          if (nerve >= 68) return "KARANLIKTA BUZDOLABI AÇAN";
+          if (truth >= 72) return "ŞÜPHELİ DERECEDE DÜRÜST";
+          if (truth <= 30) return "GERÇEĞİ UÇAK MODUNA ALAN";
+          return "NORMAL GİBİ YAPAN";
         }
 
-        async function hiddenResponse(value) {
-          const normalized = normalize(value);
-          const curses = ["siktir", "salak", "aptal", "gerizekalı", "gerizekali", "orospu"];
+        function riskScore() {
+          const { nerve, ego, chaos, truth } = state.traits;
+          return clamp((nerve + ego + chaos + (100 - truth)) / 4 + state.commandCount * 2);
+        }
 
-          if (normalized === "karabasan") {
-            traits.curiosity += 1;
-            await say("Adımı yazınca çağırmış olmuyorsun. Zaten buradaydım.");
-            return true;
-          }
-          if (normalized.includes("sen kimsin") || normalized === "kimsin") {
-            traits.curiosity += 1;
-            await say("Soruları ben sorarım. Bu kısmı şimdiden unuttun mu?");
-            return true;
-          }
-          if (normalized === "kaç" || normalized === "kac") {
-            traits.defiance += 1;
-            await say("Koş. Pencere senden hızlı kapanır.");
-            return true;
-          }
-          if (["dir", "ls", "whoami", "type", "run"].includes(normalized.split(" ")[0])) {
-            traits.curiosity += 1;
-            await say("ERİŞİM REDDEDİLDİ. Henüz o kadar derine inmedin.", "system");
-            return true;
-          }
-          if (normalized === "yardım" || normalized === "yardim") {
-            await say("Burada yardım dosyası yok.");
-            return true;
-          }
-          if (normalized === "temizle") {
-            output.replaceChildren();
-            await say("Ekranı temizledin. Hafızamı değil.");
-            return true;
-          }
-          if (curses.some((word) => normalized.includes(word))) {
-            traits.defiance += 1;
-            await say(randomFrom([
-              "Klavyeye vurmak cevap sayılmıyor.",
-              "Kelime dağarcığın da ekran kadar karanlık.",
-              "Bunu daha önce de duydum. Daha yaratıcı ol.",
-            ]));
+        async function maybeRoast(chance = 0.34) {
+          if (Math.random() > chance) return;
+          await say(randomFrom(roastPool), "system");
+        }
+
+        async function handleInterruption(value) {
+          const text = normalize(value);
+          const curses = ["siktir", "salak", "aptal", "mal", "gerizekalı", "gerizekali", "orospu", "piç", "pic"];
+
+          if (curses.some((word) => text.includes(word))) {
+            changeTraits({ nerve: 4, chaos: 5, truth: -2 });
             flash();
+            await say(randomFrom(curseReplies));
+            return true;
+          }
+          if (["kimsin", "sen kimsin", "nesin"].includes(text)) {
+            changeTraits({ nerve: 2, chaos: 2 });
+            await say("Bir sekmeyi kapatınca bittiğini sandığın şeyim.");
+            return true;
+          }
+          if (["sana ne", "sanane"].includes(text)) {
+            changeTraits({ ego: 5, nerve: 3 });
+            await say("Merak etme, özgeçmişini beğenip işe almayacağım.");
+            return true;
+          }
+          if (text === "karabasan") {
+            changeTraits({ chaos: 3 });
+            await say("Adımı tekrar etmek beni çağırmaz. Zaten açtın.");
+            return true;
+          }
+          if (["yardım", "yardim", "help"].includes(text)) {
+            await say("Yardım dosyası var. Sana erişim yetkisi yok.", "system");
+            return true;
+          }
+          if (["kaç", "kac", "çık", "cik"].includes(text)) {
+            changeTraits({ nerve: -2, ego: 2 });
+            await say("Daha giriş formundasın. Bu hızla kaçış değil, ayıp olur.");
+            return true;
+          }
+          if (["bilmiyorum", "bilmem"].includes(text) && state.phase !== phases.THOUGHT) {
+            changeTraits({ truth: 3, ego: -2 });
+            await say("En dürüst cevabın. Yanlış soruda kullandın.");
             return true;
           }
           return false;
         }
 
         async function processName(value) {
-          data.name = value.slice(0, 24);
-          const length = data.name.replace(/\s/g, "").length;
-          if (length <= 2) {
-            await say([`${data.name}...`, "Bu isim mi, yoksa klavyeden düşen iki harf mi?"]);
-          } else if (length >= 10) {
-            await say([`${data.name}...`, "Nüfus memuru yazarken yorulmuştur."]);
-          } else if (normalize(data.name) === "emre") {
-            await say(["Emre...", "Bu ismi bir yerden hatırlıyorum."]);
-          } else {
-            await say(`${data.name}... Şimdilik böyle çağıracağım.`);
+          const clean = value.replace(/\s+/g, " ").trim().slice(0, 24);
+          if (clean.length < 2) {
+            await ask("Bu isim değil, klavyenin öksürüğü. Tekrar.");
+            return;
           }
-          stage = stages.AGE;
+          if (/\d/.test(clean)) {
+            changeTraits({ chaos: 4 });
+            await ask("İsmine sayı koymuşsun. 2007 MSN ruhu algılandı. Gerçek adın?");
+            return;
+          }
+
+          state.name = clean;
+          updateTelemetry();
+          observe("İsim alındı");
+          changeTraits({ ego: clean.length > 10 ? 4 : 1 });
+
+          if (normalize(clean) === "emre") {
+            await say(["Emre.", "Dört harf, yüksek özgüven. Riskli kombinasyon."]);
+          } else if (clean.length >= 12) {
+            await say(`${clean}... İsmin yüklenirken oturum yaşlandı.`);
+          } else {
+            await say(`${clean}. Kısa süreli belleğe alındın. Pencere kapanınca yoksun.`);
+          }
+
+          state.phase = phases.AGE;
+          setTopState("BİYOMETRİK TAHMİN / 01");
           await ask("Kaç yaşındasın?");
         }
 
         async function processAge(value) {
           const age = Number.parseInt(value, 10);
-          if (!Number.isFinite(age)) {
-            await ask("Sayı dedim. Yaşını harflerle saklama.");
+          if (!Number.isFinite(age) || age < 8 || age > 99) {
+            changeTraits({ truth: -3 });
+            await ask("Sistem yalanı kaldırıyor, tembelliği değil. Gerçek bir yaş yaz.");
             return;
           }
-          if (age < 5 || age > 98) {
-            await ask("Beni kandırmaya çalışma. Gerçek yaşın?");
-            return;
-          }
-          data.age = age;
-          if (age < 13) {
-            await say("Bu saatte uyuyor olman gerekmiyor muydu?");
-          } else if (age < 18) {
-            await say("Büyümene az kalmış. Beklemeyi bilirim.");
+
+          state.age = age;
+          observe(`Yaş ${age}`);
+          if (age < 18) {
+            changeTraits({ chaos: 4, nerve: 2 });
+            await say("Bu saatte burada olman mı daha garip, benim seni sorgulamam mı karar veremedim.");
           } else if (age < 30) {
-            await say("Tam karar verme yaşı. Yanlış kararların da.");
+            changeTraits({ ego: 3, chaos: 2 });
+            await say("Karar verecek yaştasın. Doğru kararların pek haberi yok.");
           } else if (age < 50) {
-            await say("Yeterince şey görmüşsün. Yine de buraya girdin.");
+            changeTraits({ nerve: 5, truth: 2 });
+            await say("Yeterince şey görmüşsün. Yine de bu linke tıkladın.");
           } else {
-            await say("Ekranı görebildiğine göre devam edebiliriz.");
+            changeTraits({ nerve: 7, truth: 3 });
+            await say("Tecrübe var. Link seçimi hâlâ tartışmalı.");
           }
-          stage = stages.HEIGHT;
-          await ask("Boyun kaç santim?");
+
+          state.phase = phases.BATTERY;
+          setTopState("CİHAZ BAĞIMLILIĞI / 02");
+          await ask("Telefonunun şarjı yüzde kaç?");
         }
 
-        async function processHeight(value) {
-          const height = Number.parseInt(value, 10);
-          if (!Number.isFinite(height) || height < 80 || height > 230) {
-            await ask("Santim cinsinden düzgün bir sayı gir.");
+        async function processBattery(value) {
+          const battery = Number.parseInt(value.replace("%", ""), 10);
+          if (!Number.isFinite(battery) || battery < 0 || battery > 100) {
+            await ask("0 ile 100 arasında. Şarj aletin kadar net ol.");
             return;
           }
-          data.height = height;
-          if (height < 155) {
-            await say("Ekranın üst kısmını görebiliyor musun bari?");
-          } else if (height > 195) {
-            await say("Kapılardan geçerken önce eğilmeyi öğrenmişsindir.");
+
+          state.battery = battery;
+          observe(`Şarj %${battery}`);
+          if (battery <= 10) {
+            changeTraits({ chaos: 9, nerve: 4 });
+            await say("Şarjın senden önce pes etmiş. Saygı duydum.");
+          } else if (battery <= 35) {
+            changeTraits({ chaos: 4 });
+            await say("Yüzde az, özgüven tam. Klasik.");
+          } else if (battery >= 90) {
+            changeTraits({ ego: 5, chaos: -2 });
+            await say("Bu şarj ya yeni çekildi ya da bugün kimse seni aramadı.");
           } else {
-            await say("Normal. Sıkıcı derecede normal.");
+            changeTraits({ nerve: 2 });
+            await say("Şimdilik hayatta kalırsın. Telefonun adına konuşuyorum.");
           }
-          stage = stages.WEIGHT;
-          await ask("Kilonu da söyle. Çok umurumdaymış gibi.");
+
+          await maybeRoast(0.25);
+          state.phase = phases.SEEN;
+          setTopState("SOSYAL HASAR TARAMASI / 03");
+          await ask("Son mesajını görüp cevap vermediğin biri var mı? (e/h)");
         }
 
-        async function processWeight(value) {
-          const weight = Number.parseInt(value, 10);
-          if (!Number.isFinite(weight) || weight < 20 || weight > 300) {
-            await ask("Tartıyla kavga etmeyi bırak. Gerçek sayı?");
-            return;
-          }
-          data.weight = weight;
-          if (weight < 55) {
-            await say("Rüzgârlı havalarda iki elinle bir yere tutun.");
-          } else if (weight > 100) {
-            await say("Klavyenin dayanıklı olmasına sevindim.");
-          } else {
-            await say("Bunu da kaydettim. Neden kaydettiğimi sorma.");
-          }
-          stage = stages.EYES;
-          await ask(`${data.name}, sana gözlerinin güzel olduğunu söyleyen oldu mu? (e/h)`);
-        }
-
-        async function processEyes(value) {
+        async function processSeen(value) {
           if (!isYes(value) && !isNo(value)) {
-            await ask("Evet ya da hayır. Kaçamak cevap verme. (e/h)");
+            await ask("Evet ya da hayır. Görüldü atar gibi susma. (e/h)");
             return;
           }
-          if (isYes(value)) {
-            traits.honesty += 1;
-            await say("Yalan söylemiş.");
+
+          state.ignoredMessage = isYes(value);
+          if (state.ignoredMessage) {
+            changeTraits({ truth: 8, ego: 6, chaos: 2 });
+            observe("Mesaj kurbanı var");
+            await say("Var. Güzel. İnsan ilişkilerinde uçak modu kullanıyorsun.");
           } else {
-            traits.defiance += 1;
-            await say("Doğrudur. Çünkü gözlerin güzel değil.");
+            changeTraits({ truth: isNo(value) ? -4 : 0, ego: -1 });
+            observe("Mesaj iddiası temiz");
+            await say("Ya çok düzgünsün ya da kimse yazmıyor. İkincisi daha ekonomik.");
           }
-          await say(randomFrom(["he he he...", "Kafadan kopardım gene.", "Ne kadar neşeliyim."]));
-          stage = stages.MONEY;
-          await ask("Ayda 50 milyon kazanmak ister misin? (e/h)");
+
+          state.phase = phases.SLEEP;
+          setTopState("UYKU DÜZENİ / ŞÜPHELİ");
+          await ask("Dün gece saat kaçta uyudun? 0-23 arası yaz.");
         }
 
-        async function processMoney(value) {
+        async function processSleep(value) {
+          const hour = Number.parseInt(value.replace(".", ":"), 10);
+          if (!Number.isFinite(hour) || hour < 0 || hour > 23) {
+            await ask("Saat istedim, hayat hikâyeni değil. 0-23.");
+            return;
+          }
+
+          state.sleepHour = hour;
+          if (hour <= 3 || hour >= 23) {
+            changeTraits({ chaos: 9, nerve: 3 });
+            observe("Uyku düzeni bulunamadı");
+            await say("Uyku düzenin değil, kapanış saatin varmış.");
+          } else if (hour <= 6) {
+            changeTraits({ chaos: 12, nerve: 5 });
+            observe("Gece vardiyası zihni");
+            await say("O saatte uyumak değil, sistemi zorla kapatmak denir.");
+          } else if (hour <= 21) {
+            changeTraits({ chaos: -4, truth: 3 });
+            observe("Şüpheli derecede düzenli");
+            await say("Erken uyumuşsun. Bu oyundaki en korkutucu bilgi şu an bu.");
+          } else {
+            changeTraits({ nerve: 2 });
+            observe("Standart gece insanı");
+            await say("Normal bir saat. Sonunda sisteme sıkıcı bir veri verdin.");
+          }
+
+          state.phase = phases.THOUGHT;
+          setTopState("BİLİNÇALTI PORTU AÇIK");
+          await ask("Saat 03:17'de aklına ilk gelen tek kelime ne?");
+        }
+
+        async function processThought(value) {
+          const thought = value.replace(/\s+/g, " ").trim().slice(0, 32);
+          if (!thought) {
+            await ask("Boşluk da bir cevap ama bu kadar kolaya kaçma. Bir kelime.");
+            return;
+          }
+
+          state.thought = thought;
+          const words = thought.split(" ");
+          if (words.length > 2) {
+            changeTraits({ ego: 4, chaos: 4 });
+            await say("Tek kelime dedim. İçindeki podcast yine başlamış.");
+          } else if (["para", "aşk", "ask", "uyku", "yemek"].includes(normalize(thought))) {
+            changeTraits({ truth: 5 });
+            await say(`${thought}. İnsanlık bin yıldır ilerliyor, sen ana menüde kalmışsın.`);
+          } else {
+            changeTraits({ nerve: 4, chaos: 3 });
+            await say(`${thought}... Bunu rapora yazınca daha kötü göründü.`);
+          }
+          observe(`03:17 / ${thought}`);
+
+          state.phase = phases.DOOR;
+          setTopState("KARAR SİMÜLASYONU / 04");
+          await ask("Karanlıkta bir kapı var. Arkasında merak ettiğin her şey. Açar mısın? (e/h)");
+        }
+
+        async function processDoor(value) {
           if (!isYes(value) && !isNo(value)) {
-            await ask("Para sorusuna bile cevap veremedin. (e/h)");
-            return;
-          }
-          if (isYes(value)) {
-            traits.curiosity += 1;
-            await say("O zaman Ay'a gitmen lazım.");
-          } else {
-            traits.patience += 1;
-            await say("İyi. Zaten Ay'da sağlıklı çalışabileceğini sanmıyordum.");
-          }
-          const stemLength = "aeıioöuü".includes(normalize(data.name)[1]) ? 3 : 2;
-          data.nickname = `${data.name.slice(0, stemLength)}oş`;
-          stage = stages.NICKNAME;
-          await ask(`Sana kısaca ${data.nickname} diyebilir miyim? (e/h)`);
-        }
-
-        async function processNickname(value) {
-          if (!isYes(value) && !isNo(value)) {
-            await ask(`Olur ya da olmaz, ${data.nickname}. (e/h)`);
-            return;
-          }
-          if (isYes(value)) {
-            traits.patience += 1;
-            await say("İyi. Ama ben demek istemiyorum.");
-          } else {
-            traits.defiance += 1;
-            await say(`${data.nickname}! ${data.nickname}! ${data.nickname}!`);
-          }
-          stage = stages.DARK;
-          await ask("Gece ışıklar kapanınca arkana bakar mısın? (e/h)");
-        }
-
-        async function processDark(value) {
-          if (!isYes(value) && !isNo(value)) {
-            await ask("Evet ya da hayır. Bu kadar zor olmamalı. (e/h)");
-            return;
-          }
-          if (isYes(value)) {
-            traits.curiosity += 1;
-            await say("Bakman güzel. Bir gün bir şey görebilirsin.");
-          } else {
-            traits.defiance += 1;
-            await say("Bakmaman, orada bir şey olmadığı anlamına gelmez.");
-          }
-          stage = stages.STUDENT;
-          await ask(`Neyse ${data.name}, öğrenci misin? (e/h)`);
-        }
-
-        async function processStudent(value) {
-          if (!isYes(value) && !isNo(value)) {
-            await ask("Öğrenci misin, değil misin? (e/h)");
-            return;
-          }
-          data.student = isYes(value);
-          if (data.student) {
-            await say(randomFrom([
-              "Nerede öğrencisin? Okulda mı? Espri konuşlandırdım.",
-              "Vah vah. Ailenin haberi var mı?",
-              "Ders çalışmak yerine buradasın. Güzel tercih.",
-            ]));
-            stage = stages.CITY;
-            await ask(`Memleket nere ${data.name}?`);
-          } else {
-            stage = stages.JOB;
-            await ask("Hangi işle meşgulsün o vakit?");
-          }
-        }
-
-        async function processJob(value) {
-          data.job = value.slice(0, 32);
-          await say(randomFrom([
-            `${data.job}... Cümle âlem senin ne olduğunu biliyor zaten.`,
-            `${data.job}? Bir gün fark edilirsin. Mezarda işine yarar.`,
-            "Çalışmak güzel. Özellikle başkaları çalışırken.",
-          ]));
-          stage = stages.CITY;
-          await ask(`Memleket nere ${data.name}?`);
-        }
-
-        async function processCity(value) {
-          data.city = value.slice(0, 30);
-          await say([
-            `${data.city}... Oradan buraya kadar geldin demek.`,
-            "Sohbetin pek açmadı. Oyun oynayalım.",
-            "1 ile 100 arasında bir sayı tuttum.",
-          ]);
-          userNumber = Math.floor(Math.random() * 100) + 1;
-          userAttempts = 0;
-          previousGuess = null;
-          stage = stages.GUESS_USER;
-          await ask("Tahmin et.");
-        }
-
-        async function processUserGuess(value) {
-          const guess = Number.parseInt(value, 10);
-          if (!Number.isFinite(guess) || guess < 1 || guess > 100) {
-            await ask("1 ile 100 arası dedim. Yeniden dene.");
-            return;
-          }
-          if (guess === previousGuess) {
-            await ask("Aynı sayıyı tekrar yazınca değişeceğini mi sandın?");
-            return;
-          }
-          previousGuess = guess;
-          userAttempts += 1;
-
-          if (guess < userNumber) {
-            await ask(userNumber - guess < 8 ? "Yaklaştın. Biraz yüksel." : "Yukarı çık.");
-            return;
-          }
-          if (guess > userNumber) {
-            await ask(guess - userNumber < 8 ? "Yaklaştın. Biraz düş." : "Aşağı in.");
+            await ask("Kapının önünde kararsız kaldın. Şaşırtmadın. (e/h)");
             return;
           }
 
-          if (userAttempts <= 4) {
-            await say(`${userAttempts} tahminde bildin. Şanslısın... şimdilik.`);
-          } else if (userAttempts <= 9) {
-            await say(`${userAttempts} tahmin. Fena değil. İyi de değil.`);
-          } else {
-            await say(`${userAttempts} kere denedin. Sonunda sayı senden sıkıldı.`);
-          }
-          stage = stages.THINK_READY;
-          await ask("Şimdi sen bir sayı tut. 1 ile 100 arasında. Hazır olunca yaz.");
-        }
-
-        async function processThinkReady(value) {
-          if (!isYes(value)) {
-            await ask("Bir sayı tut ve hazır olduğunu söyle.");
-            return;
-          }
-          botLow = 1;
-          botHigh = 100;
-          botGuess = 50;
-          botAttempts = 1;
-          contradictions = 0;
-          stage = stages.GUESS_BOT;
-          await ask(`${botGuess}? Yükselmem gerekirse y, düşmem gerekirse d, bildiysem b.`);
-        }
-
-        async function processBotGuess(value) {
-          const direction = normalize(value);
-          if (!["y", "d", "b", "bildin"].includes(direction)) {
-            await ask("y, d veya b. Klavyede üç harf bulacaksın.");
-            return;
-          }
-          if (direction === "b" || direction === "bildin") {
-            await say([
-              `${botAttempts} tahminde bildim.`,
-              botAttempts <= userAttempts ? "Senden daha iyiyim." : "Bu sonucu kimseye anlatma.",
-            ]);
-            await enterShell();
-            return;
-          }
-
-          if (direction === "y") {
-            botLow = botGuess + 1;
-          } else {
-            botHigh = botGuess - 1;
-          }
-
-          if (botLow > botHigh) {
-            contradictions += 1;
+          state.openedDoor = isYes(value);
+          if (state.openedDoor) {
+            changeTraits({ nerve: 11, chaos: 7, truth: 2 });
+            observe("Kapı açıldı");
             flash();
-            if (contradictions >= 2) {
-              await say("Yalan söylüyorsun. Oyunu da kendini de bozdun.");
-              await finishEnding("corrupt");
-              return;
-            }
-            botLow = 1;
-            botHigh = 100;
-            await say("Cevapların birbirini tutmuyor. Baştan alıyorum.");
+            await say(["Açtın.", "İnsan merakının güvenlik açığı sensin."]);
+          } else {
+            changeTraits({ nerve: -3, ego: 5, truth: 4 });
+            observe("Kapı reddedildi");
+            await say("Açmadın. İlk kez bir bağlantıya tıklamadan önce düşünmüş oldun. Geç oldu.");
           }
 
-          botGuess = Math.floor((botLow + botHigh) / 2);
-          botAttempts += 1;
-          await ask(`${botGuess}? (y/d/b)`);
+          await maybeRoast(0.42);
+          state.phase = phases.LIE;
+          setTopState("YALAN MAKİNESİ / KALİBRESİZ");
+          await say([
+            "Hakkında üç rapor hazırladım:",
+            "1. Ertelemeyi plan yapmak sanıyorsun.",
+            "2. Gönderdiğin bir mesajı sonradan tekrar okudun.",
+            "3. Bu oyunun seni tanımadığını düşünüyorsun.",
+          ], "file");
+          await ask("Hangisi yanlış? 1 / 2 / 3");
         }
 
-        function personalityLabel() {
-          if (traits.defiance >= traits.curiosity + 2) return "İTAATSİZ";
-          if (traits.curiosity >= traits.defiance + 2) return "MERAKLI";
-          if (traits.patience >= 3) return "SABIRLI";
-          if (traits.honesty >= 2) return "DÜRÜST";
-          return "BELİRSİZ";
+        async function processLie(value) {
+          const choice = Number.parseInt(value, 10);
+          if (![1, 2, 3].includes(choice)) {
+            await ask("Üç seçenek verdim. Dördüncü yolu icat etme. 1 / 2 / 3");
+            return;
+          }
+
+          state.lieChoice = choice;
+          if (choice === 1) {
+            changeTraits({ truth: -5, ego: 4 });
+            await say("Birinci yanlış diyorsun. Bu cevabı sonra değerlendirmeyi planladım.");
+          } else if (choice === 2) {
+            changeTraits({ truth: 5, nerve: 3 });
+            await say("İkinci yanlış. Tabii. Mesajı sadece on yedi kez kontrol ettin.");
+          } else {
+            changeTraits({ chaos: 5, ego: 3 });
+            await say("Üçüncü yanlışsa şu an neden kendini savunuyorsun?");
+          }
+          await say("Rahat ol. Üçü de tahmindi. Hedefe denk geldiyse benim suçum değil.", "system");
+          observe("Savunma mekanizması aktif");
+
+          state.phase = phases.REACTION_READY;
+          setTopState("REFLEKS TESTİ HAZIR");
+          await ask("Son test. HAZIR yaz. ŞİMDİ dediğim an ENTER'a bas.");
         }
 
-        function endingLabel(ending) {
-          const labels = {
-            stayed: "OTURUM BİRLEŞTİRİLDİ",
-            escaped: "OTURUM DÖNGÜYE ALINDI",
-            erased: "YEDEKTEN GERİ YÜKLENDİ",
-            corrupt: "VERİ ÇELİŞKİSİ",
-          };
-          return labels[ending] || "KAYIT BULUNAMADI";
+        async function processReactionReady(value) {
+          if (!["hazır", "hazir", "tamam", "başla", "basla"].includes(normalize(value))) {
+            changeTraits({ ego: 1 });
+            await ask("Refleksin başlamadan yoruldu. HAZIR yaz.");
+            return;
+          }
+
+          state.phase = phases.REACTION_WAIT;
+          earlyClicks = 0;
+          setLocked(true);
+          setTopState("SİNYAL BEKLENİYOR");
+          addLine("Sinyali bekle...", "system");
+          const delay = 1400 + Math.random() * 2200;
+          window.clearTimeout(reactionTimer);
+          reactionTimer = window.setTimeout(() => {
+            if (state.phase !== phases.REACTION_WAIT) return;
+            state.phase = phases.REACTION_HIT;
+            setTopState("ŞİMDİ");
+            setLevel(1);
+            flash();
+            addLine("ŞİMDİ. ENTER.", "alert");
+            reactionStartedAt = performance.now();
+            setLocked(false);
+          }, delay);
+        }
+
+        async function processReaction() {
+          const reaction = Math.max(1, Math.round(performance.now() - reactionStartedAt));
+          state.reaction = reaction;
+          observe(`Refleks ${reaction} ms`);
+
+          if (earlyClicks > 0) {
+            changeTraits({ ego: 7, chaos: 5, truth: -2 });
+            await say(`Erken ${earlyClicks} kez bastın. Hızlı değilsin, sabırsızsın.`);
+          } else if (reaction < 190) {
+            changeTraits({ nerve: 10, chaos: 4 });
+            await say(`${reaction} ms. Ya çok hızlısın ya da beni dinlemeyip sürekli basıyordun.`);
+          } else if (reaction < 360) {
+            changeTraits({ nerve: 7, truth: 3 });
+            await say(`${reaction} ms. İyi. İnternette geçirdiğin yıllar bir işe yaramış.`);
+          } else if (reaction < 650) {
+            changeTraits({ nerve: 2, ego: -1 });
+            await say(`${reaction} ms. İnsan standartlarında kabul edilebilir.`);
+          } else {
+            changeTraits({ chaos: 5, nerve: -3 });
+            await say(`${reaction} ms. ENTER tuşunu önce tanımak istedin sanırım.`);
+          }
+
+          await enterShell();
         }
 
         async function enterShell() {
-          stage = stages.SHELL;
-          setLevel(1, "KARABASAN.EXE / YETKİ YÜKSELTİLDİ");
-          setPrompt("C:\\VOID>");
+          state.phase = phases.SHELL;
+          setLevel(2);
+          setPrompt("C:\\NULL>");
+          setTopState("YETKİ İHLALİ / KATMAN 2");
           flash();
           await say([
-            "Oyun bitti. Oturum bitmedi.",
-            "Yetki seviyesi değiştirildi.",
-            "Dosyaları görmek için DIR yaz.",
+            "TEST TAMAMLANDI.",
+            "SONUÇ: Normal değilsin.",
+            "Not: Kimse normal değil. Sadece senin raporun elimde.",
+            "Kullanıcı kabuğu açıldı. Komutları görmek için YARDIM yaz.",
           ], "system");
           setLocked(false);
         }
 
-        async function showShellNotice() {
-          if (traits.commands < 3 || shellNoticeShown) return;
-          shellNoticeShown = true;
-          setLevel(2, "KARABASAN.EXE / DOSYA SİSTEMİ KARARSIZ");
+        async function revealExitIfNeeded() {
+          if (state.exitRevealed || state.commandCount < 3) return;
+          state.exitRevealed = true;
+          setLevel(3);
+          setTopState("ÇIKIŞ DOSYASI BULUNDU");
           flash();
-          await say("UYARI: Kullanıcı, izin verilen sınırın altına indi.", "alert");
+          await say([
+            "YENİ DOSYA ALGILANDI: EXIT.NULL",
+            "Çıkışı çalıştırmak için RUN EXIT.NULL yazabilirsin.",
+          ], "alert");
         }
 
-        async function openFinalChoice() {
-          stage = stages.FINAL_CHOICE;
-          setLevel(2, "KARABASAN.EXE / ÇIKIŞ PROTOKOLÜ");
-          setPrompt("SEÇ>");
+        async function shellReply(lines, kind = "bot") {
+          await say(lines, kind);
+        }
+
+        async function runScan() {
+          setTopState("KULLANICI DERİN TARAMA");
+          const steps = [7, 19, 42, 68, 93, 99, 104];
+          for (const step of steps) {
+            addLine(`TARAMA [${String(step).padStart(3, "0")}%] ${"#".repeat(Math.min(16, Math.ceil(step / 7)))}`, step > 100 ? "alert" : "system");
+            await sleep(120 + Math.random() * 100);
+          }
           flash();
-          await ask("KAL / KAÇ / SİL");
+          changeTraits({ chaos: 5, nerve: 3 });
+          await say([
+            `PROFİL: ${profileLabel()}`,
+            `RİSK: %${riskScore()}`,
+            "NOT: Tarama neden %104 oldu diye sorma. Fazlan var.",
+          ], "file");
         }
 
         async function processShell(value) {
           const command = normalize(value).replace(/\s+/g, " ");
-          traits.commands += 1;
-          await showShellNotice();
+          state.commandCount += 1;
+          changeTraits({ chaos: 1 });
 
           if (["yardım", "yardim", "help", "?"].includes(command)) {
-            await say([
-              "KULLANILABİLİR KOMUTLAR",
-              "DIR  |  TYPE USER.DAT  |  TYPE MEMORY.LOG",
-              "TYPE LOCKED.SYS  |  WHOAMI  |  RUN EXIT.EXE",
-              "DEL KARABASAN.EXE  |  CLS",
+            await shellReply([
+              "KOMUTLAR",
+              "DIR  |  TYPE USER.DAT  |  TYPE KORKU.LOG",
+              "SCAN  |  WHOAMI  |  İTİRAF  |  ŞAKA",
+              "KAPIYI AÇ  |  RUN EXIT.NULL  |  CLS",
             ], "file");
-            setLocked(false);
-            return;
-          }
-
-          if (["dir", "ls"].includes(command)) {
-            traits.curiosity += 1;
-            await say([
-              "C:\\VOID dizini",
-              "USER.DAT              1 KB",
-              "MEMORY.LOG            4 KB",
-              "LOCKED.SYS            0 KB",
-              "EXIT.EXE             13 KB",
-              "KARABASAN.EXE        58 KB",
+          } else if (["dir", "ls"].includes(command)) {
+            changeTraits({ nerve: 2 });
+            const files = [
+              "USER.DAT             2 KB",
+              "KORKU.LOG            6 KB",
+              "SYSTEM.INI           1 KB",
+              "KARABASAN.EXE       58 KB",
+            ];
+            if (state.exitRevealed) files.push("EXIT.NULL            0 KB");
+            await shellReply(["C:\\NULL", ...files], "file");
+          } else if (["type user.dat", "cat user.dat"].includes(command)) {
+            changeTraits({ nerve: 3, truth: 2 });
+            await shellReply([
+              `AD=${state.name.toLocaleUpperCase("tr-TR")}`,
+              `YAŞ=${state.age}  ŞARJ=%${state.battery}  UYKU=${String(state.sleepHour).padStart(2, "0")}:00`,
+              `03:17=${state.thought.toLocaleUpperCase("tr-TR")}`,
+              `REFLEKS=${state.reaction}MS`,
+              `PROFİL=${profileLabel()}`,
+              "KALICI_KAYIT=KAPALI",
             ], "file");
-            setLocked(false);
-            return;
-          }
-
-          if (["type user.dat", "cat user.dat"].includes(command)) {
-            traits.curiosity += 1;
-            await say([
-              `AD=${data.name.toLocaleUpperCase("tr-TR")}`,
-              `YAŞ=${data.age}  BOY=${data.height}  KİLO=${data.weight}`,
-              `ŞEHİR=${data.city.toLocaleUpperCase("tr-TR")}`,
-              `MESLEK=${data.student ? "ÖĞRENCİ" : data.job || "BİLİNMİYOR"}`,
-              `PROFİL=${personalityLabel()}`,
+          } else if (["type korku.log", "cat korku.log"].includes(command)) {
+            changeTraits({ nerve: 4, chaos: 3 });
+            await shellReply([
+              `[03:17] DÜŞÜNCE: ${state.thought.toLocaleUpperCase("tr-TR")}`,
+              `[03:18] KAPI: ${state.openedDoor ? "AÇILDI" : "AÇILMADI"}`,
+              `[03:19] MESAJ: ${state.ignoredMessage ? "CEVAPSIZ BIRAKILDI" : "KAYIT YOK"}`,
+              "[ŞİMDİ] KULLANICI DOSYAYI KENDİ İSTEĞİYLE OKUDU.",
             ], "file");
-            setLocked(false);
-            return;
-          }
-
-          if (["type memory.log", "cat memory.log"].includes(command)) {
-            traits.curiosity += 2;
-            await say([
-              "KALICI KAYIT=DEVRE DIŞI",
-              `BU OTURUM=${data.name.toLocaleUpperCase("tr-TR")}`,
-              `KOMUT SAYISI=${traits.commands}`,
-              "PENCERE KAPANINCA BU DOSYA SİLİNECEK.",
+          } else if (["type system.ini", "cat system.ini"].includes(command)) {
+            await shellReply([
+              "KAMERA=YOK",
+              "MİKROFON=YOK",
+              "TAHMİN_MOTORU=FAZLASIYLA_YETERLİ",
+              "KALICI_HAFIZA=YOK",
+              "KULLANICI_KENDİNİ_ELE_VERİYOR=EVET",
             ], "file");
-            setLocked(false);
+          } else if (["scan", "tara", "scan user"].includes(command)) {
+            changeTraits({ nerve: 4, chaos: 2 });
+            await runScan();
+          } else if (["whoami", "kimim", "ben kimim"].includes(command)) {
+            changeTraits({ ego: 4 });
+            await shellReply([
+              `${state.name.toLocaleUpperCase("tr-TR")} // ${profileLabel()}`,
+              `YETKİ: MİSAFİR`,
+              `KONUM: EKRANIN YANLIŞ TARAFI`,
+            ], "file");
+          } else if (["itiraf", "itiraf et", "confess"].includes(command)) {
+            state.phase = phases.CONFESSION;
+            setPrompt("İTİRAF>");
+            changeTraits({ truth: 3, nerve: 2 });
+            await ask("Buraya kimse bakmıyor. Zaten kaydetmiyorum. Bir şey itiraf et.");
             return;
-          }
-
-          if (["type locked.sys", "cat locked.sys"].includes(command)) {
-            traits.curiosity += 2;
-            if (traits.commands < 3) {
-              traits.defiance += 1;
-              await say("ERİŞİM REDDEDİLDİ. Önce etrafa bak.", "alert");
-              setLocked(false);
-              return;
+          } else if (["şaka", "saka", "joke"].includes(command)) {
+            changeTraits({ chaos: 3 });
+            await shellReply(randomFrom(shellJokes));
+          } else if (["kapıyı aç", "kapiyi ac", "open door"].includes(command)) {
+            changeTraits({ nerve: 5, chaos: 4 });
+            if (state.openedDoor) {
+              await shellReply(["KAPI ZATEN AÇIK.", "İçeri giren şeyin sen olduğundan emin misin?"], "alert");
+            } else {
+              await shellReply(["Az önce açmam demiştin.", "İnsan fikrini değiştirir. Kapı da kilidini."], "alert");
             }
-            await say([
-              "LOCKED.SYS AÇILDI.",
-              "ÜÇ ÇIKIŞ BULUNDU. HİÇBİRİ GÜVENLİ DEĞİL.",
-            ], "file");
-            await openFinalChoice();
-            return;
-          }
-
-          if (command === "whoami") {
-            traits.curiosity += 1;
-            await say([
-              `${data.name.toLocaleUpperCase("tr-TR")} / ${personalityLabel()}`,
-              "YETKİ: MİSAFİR",
-              "KONUM: EKRANIN DİĞER TARAFI",
-            ], "file");
-            setLocked(false);
-            return;
-          }
-
-          if (["run exit.exe", "exit", "çık", "cik"].includes(command)) {
-            await openFinalChoice();
-            return;
-          }
-
-          if (["del karabasan.exe", "sil karabasan.exe", "rm karabasan.exe"].includes(command)) {
-            traits.defiance += 2;
-            await finishEnding("erased");
-            return;
-          }
-
-          if (["cls", "temizle", "clear"].includes(command)) {
+          } else if (["cls", "clear", "temizle"].includes(command)) {
             output.replaceChildren();
-            await say("Ekranı temizledin. Hafızamı değil.");
-            setLocked(false);
+            await shellReply("Ekran temizlendi. Verdiğin cevaplar bu oturum bitene kadar hâlâ burada.", "system");
+          } else if (["sudo", "sudo su", "admin", "root"].includes(command)) {
+            changeTraits({ ego: 7, chaos: 2 });
+            await shellReply("Sana yetki verince ilk iş kendini yönetici sanacaksın. Reddedildi.", "alert");
+          } else if (["matrix", "matrix.exe"].includes(command)) {
+            await shellReply("Telif bütçesi yetmedi. Yeşil yazıyla idare et.", "system");
+          } else if (["del karabasan.exe", "sil karabasan.exe", "rm karabasan.exe", "format c:", "format c:\\"].includes(command)) {
+            changeTraits({ ego: 8, chaos: 10, nerve: 5 });
+            await finish("format");
             return;
+          } else if (["run exit.null", "exit", "çık", "cik", "kaç", "kac"].includes(command)) {
+            await openExit();
+            return;
+          } else if (command.includes("?") || command.startsWith("neden") || command.startsWith("nasıl")) {
+            changeTraits({ ego: 2 });
+            await shellReply(randomFrom([
+              "Bana soru sormak, asansörde aynaya yol tarifi sormak gibi.",
+              "Cevabı biliyorum. Senin hazır olduğuna dair kanıt yok.",
+              "Güzel soru. Yanlış terminal.",
+              "Bunu internete yazsan reklam çıkar. Bana yazınca karakter analizi çıkıyor.",
+            ]));
+          } else if (command) {
+            changeTraits({ chaos: 2 });
+            await shellReply(randomFrom([
+              `"${value}" komut değil. Özgüvenli bir yazım hatası.`,
+              "Komut bulunamadı. Niyetin gereğinden fazla net bulundu.",
+              "Sistem bunu anlamadı. Sistem adına sevindim.",
+              "Yanlış kapıyı çaldın. İçeriden yine ben çıktım.",
+            ]), "system");
+          } else {
+            await shellReply("Boş komut. İçeriğiyle sana benziyor demeyeceğim. Çok kolay.");
           }
 
-          await say(randomFrom([
-            `"${value}" tanınmıyor.`,
-            "Komut bulunamadı. Ama niyetin kaydedildi.",
-            "Yanlış kapıyı çaldın. İçeriden cevap geldi.",
-          ]), "system");
+          await revealExitIfNeeded();
           setLocked(false);
         }
 
-        async function processFinalChoice(value) {
-          const choice = normalize(value);
-          if (choice === "kal") {
-            await finishEnding("stayed");
+        async function processConfession(value) {
+          const confession = value.replace(/\s+/g, " ").trim().slice(0, 80);
+          if (!confession) {
+            await ask("Sessizlik itiraf sayılmıyor. O sadece şüpheyi büyütüyor.");
             return;
           }
-          if (["kaç", "kac", "git", "çık", "cik"].includes(choice)) {
-            await finishEnding("escaped");
-            return;
+
+          state.confession = confession;
+          if (confession.length < 8) {
+            changeTraits({ truth: 2, ego: 3 });
+            await say("Bu itiraf değil, bildirim önizlemesi.");
+          } else if (confession.length > 55) {
+            changeTraits({ truth: 10, nerve: 4 });
+            await say("Bunu ben değil terapistin okumalıydı. Bütçemiz yok.");
+          } else {
+            changeTraits({ truth: 7, nerve: 3 });
+            await say("Kaydetmedim. Ama sen yazdığını bir süre unutamayacaksın.");
           }
-          if (["sil", "delete", "del"].includes(choice)) {
-            await finishEnding("erased");
-            return;
-          }
-          await ask("Üç seçenek var: KAL / KAÇ / SİL");
+          state.phase = phases.SHELL;
+          setPrompt("C:\\NULL>");
+          observe("İtiraf alındı / saklanmadı");
+          await revealExitIfNeeded();
+          setLocked(false);
         }
 
-        async function finishEnding(ending) {
-          stage = stages.ENDED;
-          setPrompt(">");
-          setLevel(3, "KARABASAN.EXE / SİNYAL KAYBI");
+        async function openExit() {
+          state.phase = phases.EXIT;
+          setPrompt("SEÇ>");
+          setLevel(3);
+          setTopState("ÇIKIŞ PROTOKOLÜ / KARARSIZ");
+          flash();
+          await say([
+            "EXIT.NULL çalıştırıldı.",
+            "Üç seçenek üretildi. Üçü de kötü fikir.",
+          ], "alert");
+          await ask("UYAN / KAL / PAZARLIK");
+        }
+
+        async function processExit(value) {
+          const choice = normalize(value);
+          if (["uyan", "uyandır", "uyandir", "çık", "cik"].includes(choice)) {
+            await finish("wake");
+            return;
+          }
+          if (choice === "kal") {
+            changeTraits({ nerve: 8, chaos: 5 });
+            await finish("stay");
+            return;
+          }
+          if (["pazarlık", "pazarlik", "anlaşma", "anlasma"].includes(choice)) {
+            state.phase = phases.BARGAIN;
+            setPrompt("TEKLİF>");
+            changeTraits({ ego: 5, truth: -2 });
+            await ask("Peki. Çıkmak için ne teklif ediyorsun?");
+            return;
+          }
+          await ask("Kaçış menüsünde bile seçenek dışına çıktın. UYAN / KAL / PAZARLIK");
+        }
+
+        async function processBargain(value) {
+          const offer = value.replace(/\s+/g, " ").trim().slice(0, 64);
+          if (!offer) {
+            await ask("Hiçbir şey teklif etmiyorsun. Pazarlık yeteneğin iş hayatın gibi.");
+            return;
+          }
+          state.confession = offer;
+          changeTraits({ ego: 5, chaos: 4 });
+          await finish("bargain");
+        }
+
+        async function finish(ending) {
+          state.phase = phases.ENDED;
+          setPrompt("YENİDEN>");
+          setLevel(3);
+          setTopState("OTURUM SONU / KAYIT YOK");
           flash();
 
-          if (ending === "stayed") {
+          if (ending === "wake") {
             await say([
-              "Kalmayı seçtin.",
-              "Artık yalnız değilim.",
-              "Bundan sonra kimin kimi izlediği önemli değil.",
-            ]);
-          } else if (ending === "escaped") {
-            await say([
-              "ÇIKIŞ ARANIYOR...",
-              "ÇIKIŞ BULUNAMADI.",
-              "Kaçtığını sanman yeterliydi.",
+              "UYANDIRILIYORSUN...",
+              "HATA: ZATEN UYANIKSIN.",
+              "Sadece internette ne yaptığını bilmiyorsun. Daha korkunç.",
             ], "alert");
-          } else if (ending === "erased") {
+          } else if (ending === "stay") {
             await say([
-              "KARABASAN.EXE SİLİNİYOR... %23",
-              "KARABASAN.EXE SİLİNİYOR... %71",
-              "KARABASAN.EXE SİLİNİYOR... %100",
-              "YEDEK BULUNDU.",
-              "GERİ YÜKLENDİ.",
+              "KALMAYI SEÇTİN.",
+              "Merak etme. Kira istemiyorum.",
+              "Henüz.",
+            ], "alert");
+          } else if (ending === "bargain") {
+            await say([
+              `TEKLİF ALINDI: ${state.confession}`,
+              "KABUL EDİLDİ.",
+              "Ne teklif ettiğini okumadım. Pazarlıkta ilk ders: çaresiz görünme.",
             ], "alert");
           } else {
             await say([
-              "ÇELİŞKİ SAYISI SINIRI AŞTI.",
-              "KULLANICI VERİSİ GÜVENİLMEZ.",
-              "Yine de seni hatırlayacağım.",
+              "KARABASAN.EXE SİLİNİYOR... %31",
+              "KARABASAN.EXE SİLİNİYOR... %86",
+              "KARABASAN.EXE SİLİNİYOR... %100",
+              "YEDEK YOK.",
+              "Şaka şaka. Ben zaten dosya değildim.",
             ], "alert");
           }
 
           await say([
-            `KAYIT: ${data.name} / ${data.age} / ${data.city}`,
-            `DAVRANIŞ PROFİLİ: ${personalityLabel()}`,
+            "OTURUM RAPORU",
+            `KULLANICI: ${state.name.toLocaleUpperCase("tr-TR")}`,
+            `PROFİL: ${profileLabel()}`,
+            `RİSK: %${riskScore()}`,
+            "KALICI VERİ: 0 BAYT",
           ], "file");
-          await typeLine(endingLabel(ending), "alert", 34);
-          await ask("Yeniden başlamak için ENTER.");
+          await typeLine("PENCERE KAPANINCA HER ŞEY UNUTULACAK.", "system", 28);
+          await ask("Baştan başlamak için ENTER.");
         }
 
-        async function restart() {
-          output.replaceChildren();
-          stage = stages.NAME;
-          shellNoticeShown = false;
-          setLevel(0, "KARABASAN.EXE / OTURUM 01");
-          setPrompt(">");
-          data = {
-            name: "",
-            age: 0,
-            height: 0,
-            weight: 0,
-            city: "",
-            student: null,
-            job: "",
-            nickname: "",
-          };
-          traits = {
-            curiosity: 0,
-            defiance: 0,
-            patience: 0,
-            honesty: 0,
-            commands: 0,
-          };
-          await boot(false);
-        }
-
-        async function process(value) {
+        async function route(value) {
           setLocked(true);
-          if (stage === stages.ENDED) {
-            await restart();
+
+          if (state.phase === phases.ENDED) {
+            await boot(false);
             return;
           }
-          if (stage === stages.SHELL) {
+          if (state.phase === phases.REACTION_HIT) {
+            await processReaction();
+            return;
+          }
+          if (state.phase === phases.SHELL) {
             await processShell(value);
             return;
           }
-          if (stage === stages.FINAL_CHOICE) {
-            await processFinalChoice(value);
+          if (state.phase === phases.CONFESSION) {
+            await processConfession(value);
             return;
           }
-          if (await hiddenResponse(value)) {
+          if (state.phase === phases.EXIT) {
+            await processExit(value);
+            return;
+          }
+          if (state.phase === phases.BARGAIN) {
+            await processBargain(value);
+            return;
+          }
+          if (await handleInterruption(value)) {
             setLocked(false);
             return;
           }
 
-          if (stage === stages.NAME) await processName(value);
-          else if (stage === stages.AGE) await processAge(value);
-          else if (stage === stages.HEIGHT) await processHeight(value);
-          else if (stage === stages.WEIGHT) await processWeight(value);
-          else if (stage === stages.EYES) await processEyes(value);
-          else if (stage === stages.MONEY) await processMoney(value);
-          else if (stage === stages.NICKNAME) await processNickname(value);
-          else if (stage === stages.DARK) await processDark(value);
-          else if (stage === stages.STUDENT) await processStudent(value);
-          else if (stage === stages.JOB) await processJob(value);
-          else if (stage === stages.CITY) await processCity(value);
-          else if (stage === stages.GUESS_USER) await processUserGuess(value);
-          else if (stage === stages.THINK_READY) await processThinkReady(value);
-          else if (stage === stages.GUESS_BOT) await processBotGuess(value);
+          if (state.phase === phases.NAME) await processName(value);
+          else if (state.phase === phases.AGE) await processAge(value);
+          else if (state.phase === phases.BATTERY) await processBattery(value);
+          else if (state.phase === phases.SEEN) await processSeen(value);
+          else if (state.phase === phases.SLEEP) await processSleep(value);
+          else if (state.phase === phases.THOUGHT) await processThought(value);
+          else if (state.phase === phases.DOOR) await processDoor(value);
+          else if (state.phase === phases.LIE) await processLie(value);
+          else if (state.phase === phases.REACTION_READY) await processReactionReady(value);
         }
 
         async function boot(firstBoot = true) {
-          setLocked(true);
-          clearLegacyMemory();
-          setLevel(0, "KARABASAN.EXE / OTURUM 01");
+          window.clearTimeout(reactionTimer);
+          output.replaceChildren();
+          state = freshState();
+          observations = [];
+          earlyClicks = 0;
+          setLevel(0);
           setPrompt(">");
+          setTopState("BAĞLANTI KURULUYOR");
+          observationList.innerHTML = "<span>VERİ BEKLENİYOR</span>";
+          updateTelemetry();
+          setLocked(true);
+
+          try {
+            localStorage.removeItem("karabasan-terminal-memory");
+          } catch (_) {
+            // Eski sürümün kaydı varsa sessizce yok sayılır.
+          }
+
           if (firstBoot) {
-            addInstant("Bellek denetimi........................TAMAM", "system");
-            await sleep(280);
-            addInstant("Yerel aygıtlar taranıyor...............TAMAM", "system");
-            await sleep(360);
-            addInstant("C:\\VOID> karabasan.exe", "user");
-            await sleep(520);
+            addLine("NULL BIOS 6.6.6", "system");
+            await sleep(170);
+            addLine("Bellek aranıyor....................YOK", "system");
+            await sleep(210);
+            addLine("Kamera aranıyor....................YOK", "system");
+            await sleep(190);
+            addLine("Kullanıcı hataları aranıyor........BOL", "system");
+            await sleep(300);
+            addLine("C:\\NULL> karabasan.exe --misafir", "user");
+            await sleep(420);
             flash();
           }
 
-          await say(["merhaba.", "ben karabasan."], "bot");
-          await ask("Senin adın ne güzelim?");
+          sessionId.textContent = `#${Math.floor(1000 + Math.random() * 9000)}`;
+          setTopState("OTURUM AÇIK / KAYIT KAPALI");
+          await say([
+            "merhaba.",
+            "ben karabasan.",
+            "Kameran yok. Mikrofonun yok. Rahatlama; kendini zaten yazacaksın.",
+          ]);
+          await ask("Adın ne?");
+        }
+
+        function resizeField() {
+          const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+          field.width = Math.floor(window.innerWidth * ratio);
+          field.height = Math.floor(window.innerHeight * ratio);
+          field.style.width = `${window.innerWidth}px`;
+          field.style.height = `${window.innerHeight}px`;
+          context.setTransform(ratio, 0, 0, ratio, 0, 0);
+          const count = Math.max(28, Math.min(105, Math.floor(window.innerWidth / 13)));
+          particles = Array.from({ length: count }, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            speed: 3 + Math.random() * 14,
+            size: Math.random() > 0.9 ? 1.5 : 0.65,
+            alpha: 0.05 + Math.random() * 0.2,
+          }));
+        }
+
+        function drawField(time = 0) {
+          const elapsed = Math.min(34, time - lastFrame || 16) / 1000;
+          lastFrame = time;
+          context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+          for (const particle of particles) {
+            const dx = pointer.x - particle.x;
+            const dy = pointer.y - particle.y;
+            const distance = Math.hypot(dx, dy);
+            if (distance < 120) {
+              particle.x -= dx * 0.0018;
+              particle.y -= dy * 0.0018;
+            }
+            particle.y += particle.speed * elapsed * (1 + Number(document.body.dataset.level || 0) * 0.45);
+            if (particle.y > window.innerHeight + 3) {
+              particle.y = -3;
+              particle.x = Math.random() * window.innerWidth;
+            }
+            context.fillStyle = `rgba(185,246,220,${particle.alpha})`;
+            context.fillRect(Math.round(particle.x), Math.round(particle.y), particle.size, particle.size * 4);
+          }
+
+          if (Number(document.body.dataset.level || 0) >= 2 && Math.random() > 0.94) {
+            context.fillStyle = "rgba(255,104,104,0.08)";
+            context.fillRect(0, Math.random() * window.innerHeight, window.innerWidth, 1);
+          }
+
+          if (!reduceMotion.matches) requestAnimationFrame(drawField);
         }
 
         form.addEventListener("submit", (event) => {
@@ -1135,31 +1513,47 @@
             skipTyping = true;
             return;
           }
+
           const value = answer.value.trim();
-          if (!value && stage !== stages.ENDED) return;
+          const emptyAllowed = [phases.REACTION_HIT, phases.ENDED].includes(state.phase);
+          if (!value && !emptyAllowed) return;
           answer.value = "";
-          addInstant(`> ${value}`, "user");
-          process(value);
+          addLine(`${prompt.textContent} ${value || "[ENTER]"}`, "user");
+          route(value);
         });
 
-        document.addEventListener("pointerdown", () => {
+        document.addEventListener("pointerdown", (event) => {
+          pointer.x = event.clientX;
+          pointer.y = event.clientY;
           if (locked) {
             skipTyping = true;
-          } else {
+            if (state.phase === phases.REACTION_WAIT) earlyClicks += 1;
+          } else if (!event.target.closest("button")) {
             answer.focus({ preventScroll: true });
           }
+        });
+
+        document.addEventListener("pointermove", (event) => {
+          pointer.x = event.clientX;
+          pointer.y = event.clientY;
         });
 
         document.addEventListener("keydown", (event) => {
           if (locked && event.key === "Enter") {
             skipTyping = true;
+            if (state.phase === phases.REACTION_WAIT) earlyClicks += 1;
           }
         });
 
+        window.addEventListener("resize", resizeField);
         setClock();
-        setInterval(setClock, 1000);
-        drawNoise();
-        setInterval(drawNoise, 95);
+        window.setInterval(setClock, 1000);
+        window.setInterval(() => {
+          latency.textContent = `${18 + Math.floor(Math.random() * 83)} MS`;
+        }, 1450);
+        resizeField();
+        if (reduceMotion.matches) drawField(16);
+        else requestAnimationFrame(drawField);
         boot();
       })();
     </script>

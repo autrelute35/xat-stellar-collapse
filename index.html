@@ -136,6 +136,25 @@
         let pointer = { x: 0.5, y: 0.5 };
         let comet = { x: 0, y: 0, vx: 0, vy: 0, visible: false };
         let cometTrail = [];
+        const sceneMessages = [
+          "ÇOK GEÇ.",
+          "ÇOK DERİN.",
+          "",
+          "ÇOK UZAK.",
+          "ARTIK YALNIZSIN.",
+        ];
+        let sceneIndex = 0;
+        let previousScene = 0;
+        let sceneAge = 0;
+        let transitionAge = 3;
+        let totalClicks = 0;
+        let pendingBlackHole = null;
+        let clickConstellations = [];
+        let textConstellation = [];
+        let secret = { active: false, age: 0 };
+        let cuePulse = 0;
+        let lastMusicCue = -1;
+        let musicPhase = 0;
         let frame = 0;
 
         function rgb(hex) {
@@ -197,6 +216,7 @@
           comet = { x: width / 2, y: height / 2, vx: 0, vy: 0, visible: false };
           cometTrail = [];
           makeField();
+          if (sceneIndex === 2) makeTextConstellation();
         }
 
         function makeMeteor(instant = false) {
@@ -215,19 +235,33 @@
 
         function openBlackHole(x, y) {
           if (blackHole) return;
+          const farthestCorner = Math.hypot(
+            Math.max(x, width - x),
+            Math.max(y, height - y),
+          );
           blackHole = {
             x,
             y,
             age: 0,
             max: 6.5,
             spin: Math.random() > 0.5 ? 1 : -1,
+            accretion: Array.from({ length: width < 560 ? 90 : 170 }, () => ({
+              angle: random(0, Math.PI * 2),
+              radius: random(72, farthestCorner * 0.94),
+              speed: random(0.72, 1.65),
+              length: random(1.4, 4.8),
+              size: random(0.32, 1.18),
+              alpha: random(0.2, 0.92),
+              delay: random(0, 1.1),
+              depth: Math.random(),
+            })),
           };
           meteors = [];
           cometTrail = [];
           spawn = 0;
         }
 
-        function drawStars(now, activeHole) {
+        function drawStars(now, activeHole, visibility) {
           const farthestCorner = activeHole
             ? Math.hypot(
                 Math.max(activeHole.x, width - activeHole.x),
@@ -240,12 +274,22 @@
             const pointerDx = star.x / width - pointer.x;
             const pointerDy = star.y / height - pointer.y;
             const near = activeHole ? 0 : Math.max(0, 1 - Math.hypot(pointerDx, pointerDy) * 3.6);
-            const driftX = activeHole ? 0 : (pointer.x - 0.5) * star.depth * 3.4;
-            const driftY = activeHole ? 0 : (pointer.y - 0.5) * star.depth * 2.6;
+            let driftX = activeHole ? 0 : (pointer.x - 0.5) * star.depth * 3.4;
+            let driftY = activeHole ? 0 : (pointer.y - 0.5) * star.depth * 2.6;
+            if (!activeHole && !music.paused) {
+              const musicDrift = Math.sin(music.currentTime * 0.34 + star.phase) * star.depth;
+              if (musicPhase === 1) {
+                driftX += Math.cos(star.phase + music.currentTime * 0.07) * musicDrift * 3.4;
+                driftY += Math.sin(star.phase + music.currentTime * 0.07) * musicDrift * 2.8;
+              } else if (musicPhase === 2) {
+                driftX += (star.x / width - 0.5) * musicDrift * 5.2;
+                driftY += (star.y / height - 0.5) * musicDrift * 4.2;
+              }
+            }
             let drawX = star.x + driftX;
             let drawY = star.y + driftY;
             let size = star.r + near * 0.2;
-            let alpha = Math.min(1, star.a * pulse + near * 0.16) * fieldOpacity;
+            let alpha = Math.min(1, star.a * pulse + near * 0.16 + cuePulse * star.depth * 0.16) * fieldOpacity * visibility;
             let stretch = 0;
             let angle = 0;
 
@@ -254,15 +298,30 @@
               const dy = star.y - activeHole.y;
               const distance = Math.max(1, Math.hypot(dx, dy));
               const delay = (distance / farthestCorner) * 1.12;
-              const travel = clamp((activeHole.age - 0.42 - delay) / 2.5);
-              const collapse = easeInCubic(travel);
-              angle = Math.atan2(dy, dx) + activeHole.spin * collapse * (3.2 + star.depth * 4.8);
-              const radius = distance * (1 - collapse);
+              const orbit = clamp((activeHole.age - 0.38 - delay) / 3.8);
+              const rush = easeInCubic(clamp((activeHole.age - 3.05) / 1.0));
+              const collapse = clamp(easeInCubic(orbit) * 0.52 + rush * 0.82);
+              const lensReach = Math.max(width, height) * 0.58;
+              const lens =
+                clamp(activeHole.age / 0.9) *
+                clamp(1 - distance / lensReach) *
+                (1 - collapse);
+              angle =
+                Math.atan2(dy, dx) +
+                activeHole.spin * (
+                  lens * (0.52 + star.depth * 0.74) +
+                  collapse * (4.2 + star.depth * 5.8) +
+                  rush * (8.5 + star.depth * 9.5)
+                );
+              const radius = distance * (1 - collapse) * (1 + lens * 0.055);
               drawX = activeHole.x + Math.cos(angle) * radius;
               drawY = activeHole.y + Math.sin(angle) * radius;
-              size *= 1 - travel * 0.78;
-              alpha *= 1 - travel ** 1.65;
-              stretch = Math.sin(travel * Math.PI) * (1.4 + star.depth * 2.8);
+              size *= 1 - collapse * 0.8;
+              alpha *= 1 - collapse ** 1.55;
+              stretch =
+                lens * (1.8 + star.depth * 4.5) +
+                Math.sin(collapse * Math.PI) * (2.4 + star.depth * 7.5) +
+                rush * (1 - collapse) * (4.5 + star.depth * 9.5);
             }
 
             if (alpha <= 0.01 || size <= 0.05) continue;
@@ -285,20 +344,38 @@
           }
         }
 
-        function drawMessage(now, activeHole) {
-          const message = "AWAY FROM THE WORLD";
-          const fontSize = width < 560 ? 11.5 : 15;
-          const letterSpacing = width < 560 ? 3.5 : 7.2;
+        function getMessageMetrics(message) {
           const characters = [...message];
-          ctx.font = `500 ${fontSize}px Arial, sans-serif`;
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
+          const isShort = characters.length <= 18;
+          let fontSize = width < 560 ? (isShort ? 13.5 : 11.5) : (isShort ? 18 : 15);
+          let letterSpacing = width < 560 ? (isShort ? 4.2 : 3.5) : (isShort ? 8.2 : 7.2);
 
-          const widths = characters.map((character) => ctx.measureText(character).width);
-          const totalWidth = widths.reduce((total, value) => total + value, 0) + letterSpacing * (characters.length - 1);
-          let cursorX = (width - totalWidth) / 2;
-          const baseY = height * 0.53;
-          const pulse = 0.27 + Math.sin(now * 0.00075) * 0.045;
+          ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+          let widths = characters.map((character) => ctx.measureText(character).width);
+          let totalWidth = widths.reduce((total, value) => total + value, 0) + letterSpacing * (characters.length - 1);
+          const maxWidth = width * 0.84;
+
+          if (totalWidth > maxWidth) {
+            const ratio = maxWidth / totalWidth;
+            fontSize = Math.max(8, fontSize * ratio);
+            letterSpacing *= ratio;
+            ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+            widths = characters.map((character) => ctx.measureText(character).width);
+            totalWidth = widths.reduce((total, value) => total + value, 0) + letterSpacing * (characters.length - 1);
+          }
+
+          return { characters, widths, totalWidth, letterSpacing, fontSize };
+        }
+
+        function drawMessageText(message, now, activeHole, options = {}) {
+          if (!message) return;
+          const metrics = getMessageMetrics(message);
+          const alphaMultiplier = options.alpha ?? 1;
+          const scatter = options.scatter ?? 0;
+          const enter = options.enter ?? 1;
+          let cursorX = (width - metrics.totalWidth) / 2;
+          const baseY = height * 0.49 + (options.yOffset ?? 0);
+          const pulse = 0.31 + Math.sin(now * 0.00075) * 0.05;
           const motion = reduceMotion.matches ? 0 : 1;
           const farthestCorner = activeHole
             ? Math.hypot(
@@ -307,15 +384,26 @@
               )
             : 1;
 
-          characters.forEach((character, index) => {
-            const characterWidth = widths[index];
+          ctx.font = `500 ${metrics.fontSize}px Arial, sans-serif`;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+
+          metrics.characters.forEach((character, index) => {
+            const characterWidth = metrics.widths[index];
             const baseX = cursorX + characterWidth / 2;
             const wave = now * 0.00135 + index * 0.62;
-            let drawX = baseX + Math.cos(wave * 0.72) * 0.65 * motion;
-            let drawY = baseY + Math.sin(wave) * 2.1 * motion;
-            let alpha = (pulse + Math.sin(wave) * 0.04 * motion) * fieldOpacity;
+            let drawX = baseX + Math.cos(wave * 0.72) * 0.72 * motion;
+            let drawY = baseY + Math.sin(wave) * 2.35 * motion;
+            let alpha = (pulse + Math.sin(wave) * 0.045 * motion) * alphaMultiplier * fieldOpacity * enter;
             let rotation = Math.sin(wave * 0.84) * 0.018 * motion;
-            let scale = 1;
+            let scale = 0.9 + enter * 0.1;
+
+            drawX += Math.cos(index * 1.91 + 0.4) * scatter * (42 + (index % 5) * 8);
+            drawY += Math.sin(index * 1.53 + 0.8) * scatter * (28 + (index % 4) * 7);
+            drawY += (1 - enter) * (12 + (index % 3) * 5);
+            rotation += Math.sin(index * 1.7) * scatter * 0.62;
+            alpha *= 1 - scatter;
+            scale *= 1 - scatter * 0.18;
 
             if (activeHole) {
               const dx = baseX - activeHole.x;
@@ -330,10 +418,10 @@
               drawY = activeHole.y + Math.sin(angle) * radius;
               alpha *= 1 - travel ** 1.45;
               rotation = activeHole.spin * collapse * (0.6 + index * 0.035);
-              scale = 1 - travel * 0.78;
+              scale *= 1 - travel * 0.78;
             }
 
-            if (character !== " " && alpha > 0.01) {
+            if (character !== " " && alpha > 0.01 && scale > 0.04) {
               ctx.save();
               ctx.translate(drawX, drawY);
               ctx.rotate(rotation);
@@ -343,8 +431,186 @@
               ctx.restore();
             }
 
-            cursorX += characterWidth + letterSpacing;
+            cursorX += characterWidth + metrics.letterSpacing;
           });
+        }
+
+        function makeTextConstellation() {
+          const sample = document.createElement("canvas");
+          const sampleWidth = Math.round(Math.min(900, Math.max(300, width * 0.86)));
+          const sampleHeight = width < 560 ? 92 : 78;
+          const sampleCtx = sample.getContext("2d");
+          let fontSize = width < 560 ? 15 : 21;
+          const lines = ["ÇOK SESSİZ."];
+          sample.width = sampleWidth;
+          sample.height = sampleHeight;
+          sampleCtx.font = `600 ${fontSize}px Arial, sans-serif`;
+          let letterSpacing = width < 560 ? 2.2 : 5.2;
+          const measureLine = (line) => {
+            const characters = [...line];
+            const widths = characters.map((character) => sampleCtx.measureText(character).width);
+            const measured = widths.reduce((total, value) => total + value, 0) + letterSpacing * (characters.length - 1);
+            return { characters, widths, measured };
+          };
+          let lineMetrics = lines.map(measureLine);
+          const widestLine = Math.max(...lineMetrics.map((line) => line.measured));
+          if (widestLine > sampleWidth * 0.92) {
+            const ratio = (sampleWidth * 0.92) / widestLine;
+            fontSize *= ratio;
+            letterSpacing *= ratio;
+          }
+          sampleCtx.font = `600 ${fontSize}px Arial, sans-serif`;
+          lineMetrics = lines.map(measureLine);
+          sampleCtx.textAlign = "left";
+          sampleCtx.textBaseline = "middle";
+          sampleCtx.fillStyle = "#fff";
+          lineMetrics.forEach((line, lineIndex) => {
+            let cursorX = (sampleWidth - line.measured) / 2;
+            const lineY = sampleHeight / 2 + (lineIndex - (lineMetrics.length - 1) / 2) * fontSize * 1.55;
+            line.characters.forEach((character, index) => {
+              sampleCtx.fillText(character, cursorX, lineY);
+              cursorX += line.widths[index] + letterSpacing;
+            });
+          });
+
+          const pixels = sampleCtx.getImageData(0, 0, sampleWidth, sampleHeight).data;
+          const step = width < 560 ? 2 : 3;
+          const targets = [];
+          for (let y = 0; y < sampleHeight; y += step) {
+            for (let x = 0; x < sampleWidth; x += step) {
+              if (pixels[(y * sampleWidth + x) * 4 + 3] > 80) targets.push({ x, y });
+            }
+          }
+
+          const maxParticles = width < 560 ? 430 : 760;
+          targets.sort(() => Math.random() - 0.5);
+          textConstellation = targets.slice(0, maxParticles).map((target) => {
+            const tx = (width - sampleWidth) / 2 + target.x;
+            const ty = height * 0.48 - sampleHeight / 2 + target.y;
+            return {
+              tx,
+              ty,
+              sx: tx + random(-width * 0.34, width * 0.34),
+              sy: ty + random(-height * 0.28, height * 0.28),
+              delay: random(0, 0.75),
+              phase: random(0, Math.PI * 2),
+              r: random(0.55, 1.5),
+            };
+          });
+        }
+
+        function drawTextConstellation(now, exitProgress = 0) {
+          if (!textConstellation.length) return;
+          for (const point of textConstellation) {
+            const intro = sceneIndex === 2 ? easeOutCubic(clamp((sceneAge - point.delay) / 1.65)) : 1;
+            const x = point.sx + (point.tx - point.sx) * intro;
+            const y = point.sy + (point.ty - point.sy) * intro + Math.sin(now * 0.0014 + point.phase) * intro * 0.75;
+            const twinkle = 0.68 + Math.sin(now * 0.003 + point.phase) * 0.32;
+            const alpha = intro * (1 - exitProgress) * (0.3 + twinkle * 0.66) * fieldOpacity;
+            if (alpha <= 0.01) continue;
+            ctx.fillStyle = rgba(palette.white, alpha);
+            ctx.beginPath();
+            ctx.arc(x, y, point.r * (0.75 + twinkle * 0.25), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        function makeClickConstellation(x, y) {
+          clickConstellations.push({
+            x,
+            y,
+            age: 0,
+            points: Array.from({ length: 14 }, (_, index) => {
+              const angle = index * 2.399 + random(-0.18, 0.18);
+              const radius = 11 + index * 2.7 + random(-4, 4);
+              return {
+                dx: Math.cos(angle) * radius,
+                dy: Math.sin(angle) * radius * 0.64,
+                phase: random(0, Math.PI * 2),
+                r: random(0.55, 1.45),
+              };
+            }),
+          });
+          clickConstellations = clickConstellations.slice(-5);
+        }
+
+        function drawClickConstellations(dt, now) {
+          for (const constellation of clickConstellations) {
+            constellation.age += dt;
+            const intro = easeOutCubic(clamp(constellation.age / 0.38));
+            const outro = 1 - easeInCubic(clamp((constellation.age - 1.35) / 0.75));
+            const holeFade = blackHole ? 1 - clamp(blackHole.age / 1.25) : 1;
+            for (const point of constellation.points) {
+              const twinkle = 0.58 + Math.sin(now * 0.005 + point.phase) * 0.42;
+              const x = constellation.x + point.dx * intro + Math.cos(point.phase + constellation.age) * 0.8;
+              const y = constellation.y + point.dy * intro + Math.sin(point.phase + constellation.age) * 0.8;
+              const alpha = intro * outro * holeFade * (0.28 + twinkle * 0.7);
+              ctx.fillStyle = rgba(palette.white, alpha);
+              ctx.beginPath();
+              ctx.arc(x, y, point.r * (0.76 + twinkle * 0.24), 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          clickConstellations = clickConstellations.filter((constellation) => constellation.age < 2.1);
+        }
+
+        function setScene(nextScene, x, y) {
+          previousScene = sceneIndex;
+          sceneIndex = nextScene;
+          sceneAge = 0;
+          transitionAge = 0;
+          if (sceneIndex === 2) makeTextConstellation();
+          if (sceneIndex === 3) meteors = [];
+          if (sceneIndex === 4) pendingBlackHole = { x, y };
+        }
+
+        function advanceScene(x, y) {
+          if (blackHole || pendingBlackHole || secret.active || transitionAge < 0.45) return;
+          totalClicks += 1;
+          makeClickConstellation(x, y);
+
+          if (totalClicks % 10 === 0) {
+            secret = { active: true, age: 0 };
+            return;
+          }
+
+          setScene(Math.min(4, sceneIndex + 1), x, y);
+        }
+
+        function drawMessages(now, activeHole) {
+          if (secret.active) {
+            const intro = easeOutCubic(clamp(secret.age / 0.9));
+            const outro = 1 - easeInCubic(clamp((secret.age - 3.7) / 1.1));
+            drawMessageText("BURAYA KADAR GELMEMELİYDİN.", now, null, {
+              alpha: intro * outro * 1.35,
+              enter: intro,
+              yOffset: -8,
+            });
+            return;
+          }
+
+          const outgoing = easeInCubic(clamp(transitionAge / 1.2));
+          const incoming = easeOutCubic(clamp((transitionAge - 0.34) / 1.35));
+
+          if (previousScene === 2 && sceneIndex !== 2 && transitionAge < 1.5) {
+            drawTextConstellation(now, clamp(transitionAge / 1.3));
+          } else if (sceneIndex === 2) {
+            drawTextConstellation(now);
+          }
+
+          if (previousScene !== sceneIndex && sceneMessages[previousScene]) {
+            drawMessageText(sceneMessages[previousScene], now, null, {
+              alpha: 1 - outgoing,
+              scatter: outgoing,
+            });
+          }
+
+          if (sceneMessages[sceneIndex]) {
+            drawMessageText(sceneMessages[sceneIndex], now, activeHole, {
+              alpha: incoming,
+              enter: incoming,
+            });
+          }
         }
 
         function drawMeteor(meteor) {
@@ -422,53 +688,122 @@
         }
 
         function drawBlackHole(hole) {
-          const opening = easeOutCubic(clamp(hole.age / 0.58));
-          const feeding = clamp((hole.age - 0.34) / 3.35);
-          const engulfing = easeInCubic(clamp((hole.age - 3.9) / 1.2));
+          const opening = easeOutCubic(clamp(hole.age / 0.72));
+          const feeding = easeOutCubic(clamp((hole.age - 0.3) / 3.7));
+          const rush = easeInCubic(clamp((hole.age - 3.05) / 1.0));
+          const engulfing = clamp((hole.age - 4.02) / 2.0);
           const farthestCorner = Math.hypot(
             Math.max(hole.x, width - hole.x),
             Math.max(hole.y, height - hole.y),
           ) + 24;
-          const baseRadius = 7 + opening * 26 + feeding * 20;
+          const baseRadius = 8 + opening * 34 + feeding * 27;
           const coreRadius = baseRadius + engulfing * (farthestCorner - baseRadius);
-          const ringFade = opening * (1 - engulfing);
+          const ringFade = opening * (1 - clamp((hole.age - 4.02) / 1.55));
+          const firstLight = Math.sin(clamp(hole.age / 0.82) * Math.PI) * (1 - clamp((hole.age - 0.82) / 0.3));
+
+          if (feeding > 0.04 && engulfing < 0.94) {
+            const shade = ctx.createRadialGradient(
+              hole.x,
+              hole.y,
+              baseRadius * 1.1,
+              hole.x,
+              hole.y,
+              farthestCorner,
+            );
+            shade.addColorStop(0, "rgba(0, 0, 0, 0)");
+            shade.addColorStop(0.48, `rgba(0, 0, 0, ${feeding * 0.035})`);
+            shade.addColorStop(1, `rgba(0, 0, 0, ${feeding * 0.32})`);
+            ctx.fillStyle = shade;
+            ctx.fillRect(0, 0, width, height);
+          }
 
           if (ringFade > 0.01) {
             const halo = ctx.createRadialGradient(
               hole.x,
               hole.y,
-              baseRadius * 0.72,
+              baseRadius * 0.58,
               hole.x,
               hole.y,
-              baseRadius * 2.8,
+              baseRadius * 3.8,
             );
             halo.addColorStop(0, rgba(palette.white, 0));
-            halo.addColorStop(0.4, rgba(palette.white, 0.15 * ringFade));
-            halo.addColorStop(0.58, rgba(palette.white, 0.035 * ringFade));
+            halo.addColorStop(0.28, rgba(palette.white, 0.24 * ringFade));
+            halo.addColorStop(0.44, rgba(palette.white, 0.08 * ringFade));
+            halo.addColorStop(0.7, rgba(palette.white, 0.018 * ringFade));
             halo.addColorStop(1, rgba(palette.white, 0));
             ctx.fillStyle = halo;
             ctx.beginPath();
-            ctx.arc(hole.x, hole.y, baseRadius * 2.8, 0, Math.PI * 2);
+            ctx.arc(hole.x, hole.y, baseRadius * 3.8, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.save();
+            ctx.globalCompositeOperation = "lighter";
             ctx.translate(hole.x, hole.y);
-            ctx.rotate(hole.age * 0.72 * hole.spin);
-            ctx.scale(1, 0.34);
+            ctx.rotate((hole.age * 0.3 + rush * 5.2) * hole.spin);
+            ctx.scale(1, 0.29);
             ctx.lineCap = "round";
 
-            for (let index = 0; index < 4; index += 1) {
-              const orbitRadius = baseRadius * (1.32 + index * 0.24);
-              const start = hole.age * (0.9 + index * 0.16) * hole.spin + index * 1.4;
+            for (const particle of hole.accretion) {
+              const localAge = hole.age - particle.delay;
+              if (localAge <= 0) continue;
+              const orbitPull = easeInCubic(clamp(localAge / (4.75 - particle.delay * 0.16)));
+              const pull = clamp(orbitPull * 0.52 + rush * 0.78);
+              const radius =
+                particle.radius * (1 - pull * 0.9) +
+                baseRadius * (1.04 + particle.depth * 0.42);
+              const angle =
+                particle.angle +
+                hole.spin * (
+                  localAge * particle.speed * (1 + rush * 3.8) +
+                  pull * (6.2 + particle.depth * 4.2) +
+                  rush * (6 + particle.depth * 5)
+                );
+              const streak = particle.length * (1 + pull * 5.2 + rush * 8.5);
+
+              ctx.save();
+              ctx.rotate(angle);
+              ctx.translate(radius, 0);
+              ctx.rotate(Math.PI / 2);
+              ctx.fillStyle = rgba(
+                particle.depth > 0.72 ? palette.white : palette.silver,
+                particle.alpha * ringFade * (0.45 + pull * 0.55),
+              );
+              ctx.shadowBlur = particle.depth > 0.72 ? 8 : 3;
+              ctx.shadowColor = palette.white;
               ctx.beginPath();
-              ctx.arc(0, 0, orbitRadius, start, start + Math.PI * (0.72 + index * 0.08));
-              ctx.strokeStyle = rgba(index === 0 ? palette.white : palette.silver, ringFade * (0.7 - index * 0.12));
-              ctx.lineWidth = Math.max(0.7, 2.2 - index * 0.4);
-              ctx.shadowBlur = 14;
+              ctx.ellipse(0, 0, Math.max(0.22, particle.size), streak, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+
+            for (let index = 0; index < 7; index += 1) {
+              const orbitRadius = baseRadius * (1.18 + index * 0.21);
+              const start =
+                (hole.age * (1.05 + index * 0.18) + rush * (8.2 + index * 0.72)) * hole.spin +
+                index * 1.18;
+              ctx.beginPath();
+              ctx.arc(0, 0, orbitRadius, start, start + Math.PI * (0.54 + index * 0.055));
+              ctx.strokeStyle = rgba(
+                index < 2 ? palette.white : palette.silver,
+                ringFade * Math.max(0.12, 0.82 - index * 0.105),
+              );
+              ctx.lineWidth = Math.max(0.55, 2.8 - index * 0.34);
+              ctx.shadowBlur = 18;
               ctx.shadowColor = palette.white;
               ctx.stroke();
             }
             ctx.restore();
+
+            if (firstLight > 0.01) {
+              ctx.strokeStyle = rgba(palette.white, firstLight * 0.9);
+              ctx.lineWidth = 1.4 + firstLight * 2.8;
+              ctx.shadowBlur = 28;
+              ctx.shadowColor = palette.white;
+              ctx.beginPath();
+              ctx.arc(hole.x, hole.y, baseRadius * (1.15 + firstLight * 0.75), 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.shadowBlur = 0;
+            }
           }
 
           ctx.fillStyle = "#000";
@@ -477,29 +812,68 @@
           ctx.fill();
 
           if (ringFade > 0.01) {
-            ctx.strokeStyle = rgba(palette.white, 0.82 * ringFade);
-            ctx.lineWidth = 1.15;
-            ctx.shadowBlur = 11;
+            ctx.strokeStyle = rgba(palette.white, 0.98 * ringFade);
+            ctx.lineWidth = 1.3 + feeding * 0.9;
+            ctx.shadowBlur = 21;
             ctx.shadowColor = palette.white;
             ctx.beginPath();
             ctx.arc(hole.x, hole.y, baseRadius, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
           }
+
+          if (engulfing > 0.01 && engulfing < 0.985) {
+            const edgeAlpha = Math.sin(engulfing * Math.PI) * 0.9;
+            ctx.strokeStyle = rgba(palette.white, edgeAlpha);
+            ctx.lineWidth = 1 + (1 - engulfing) * 2.4;
+            ctx.shadowBlur = 30 * (1 - engulfing);
+            ctx.shadowColor = palette.white;
+            ctx.beginPath();
+            ctx.arc(hole.x, hole.y, coreRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
         }
 
         function draw(now) {
-          const dt = Math.min(0.033, (now - last) / 1000);
+          const dt = Math.min(0.1, (now - last) / 1000);
           last = now;
+          sceneAge += dt;
+          transitionAge = Math.min(8, transitionAge + dt);
+          if (secret.active) {
+            secret.age += dt;
+            if (secret.age >= 4.8) secret.active = false;
+          }
+
+          if (!music.paused) {
+            const currentCue = Math.floor(music.currentTime / 8);
+            musicPhase = Math.floor(music.currentTime / 12) % 3;
+            if (currentCue !== lastMusicCue) {
+              if (lastMusicCue >= 0 && sceneIndex !== 3 && !blackHole) {
+                cuePulse = 1;
+                makeMeteor();
+              }
+              lastMusicCue = currentCue;
+            }
+          }
+          cuePulse = Math.max(0, cuePulse - dt * 0.72);
+
+          if (pendingBlackHole && sceneAge >= 3.65) {
+            openBlackHole(pendingBlackHole.x, pendingBlackHole.y);
+            pendingBlackHole = null;
+          }
+
           ctx.clearRect(0, 0, width, height);
 
           if (!blackHole && fieldOpacity < 1) {
             fieldOpacity = Math.min(1, fieldOpacity + dt / 1.2);
           }
-          drawStars(now, blackHole);
-          drawMessage(now, blackHole);
+          const sceneVisibility = sceneIndex === 3 ? 1 - easeOutCubic(clamp(sceneAge / 1.65)) : 1;
+          drawStars(now, blackHole, sceneVisibility);
+          drawClickConstellations(dt, now);
+          drawMessages(now, blackHole);
 
-          if (!reduceMotion.matches && !blackHole) {
+          if (!reduceMotion.matches && !blackHole && sceneIndex !== 3) {
             spawn += dt;
             if (spawn > nextSpawn) {
               makeMeteor();
@@ -514,7 +888,7 @@
               drawMeteor(meteor);
             }
             meteors = meteors.filter((meteor) => meteor.life > 0 && meteor.x > -meteor.len && meteor.y < height + meteor.len);
-          } else if (reduceMotion.matches) {
+          } else if (reduceMotion.matches && sceneIndex !== 3) {
             meteors.slice(0, 2).forEach(drawMeteor);
           }
 
@@ -529,6 +903,12 @@
               spawn = 0;
               nextSpawn = random(1.1, 2.15);
               makeField();
+              previousScene = 0;
+              sceneIndex = 0;
+              sceneAge = 0;
+              transitionAge = 0;
+              pendingBlackHole = null;
+              textConstellation = [];
             }
           }
 
@@ -559,7 +939,7 @@
         function press(event) {
           if (reduceMotion.matches) return;
           const rect = canvas.getBoundingClientRect();
-          openBlackHole(event.clientX - rect.left, event.clientY - rect.top);
+          advanceScene(event.clientX - rect.left, event.clientY - rect.top);
         }
 
         async function startMusic() {

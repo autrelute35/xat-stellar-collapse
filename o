@@ -345,7 +345,6 @@
         const noiseContext = noise.getContext("2d", { alpha: true });
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-        const memoryKey = "karabasan-terminal-memory";
         const stages = {
           NAME: "name",
           AGE: "age",
@@ -494,26 +493,11 @@
           setLocked(false);
         }
 
-        function rememberVisit(ending) {
+        function clearLegacyMemory() {
           try {
-            const previous = previousVisit();
-            localStorage.setItem(memoryKey, JSON.stringify({
-              name: data.name,
-              visits: (previous?.visits || 0) + 1,
-              ending,
-              traits,
-              time: Date.now(),
-            }));
+            localStorage.removeItem("karabasan-terminal-memory");
           } catch (_) {
             return;
-          }
-        }
-
-        function previousVisit() {
-          try {
-            return JSON.parse(localStorage.getItem(memoryKey) || "null");
-          } catch (_) {
-            return null;
           }
         }
 
@@ -943,17 +927,12 @@
 
           if (["type memory.log", "cat memory.log"].includes(command)) {
             traits.curiosity += 2;
-            const visitor = previousVisit();
-            if (visitor?.name) {
-              await say([
-                `ÖNCEKİ KULLANICI=${visitor.name.toLocaleUpperCase("tr-TR")}`,
-                `OTURUM SAYISI=${visitor.visits || 1}`,
-                `SON DURUM=${endingLabel(visitor.ending)}`,
-                "SİLİNEN KAYIT YOK.",
-              ], "file");
-            } else {
-              await say(["İLK KAYIT.", "HAFIZA BU OTURUMLA BAŞLADI."], "file");
-            }
+            await say([
+              "KALICI KAYIT=DEVRE DIŞI",
+              `BU OTURUM=${data.name.toLocaleUpperCase("tr-TR")}`,
+              `KOMUT SAYISI=${traits.commands}`,
+              "PENCERE KAPANINCA BU DOSYA SİLİNECEK.",
+            ], "file");
             setLocked(false);
             return;
           }
@@ -1062,7 +1041,6 @@
             ], "alert");
           }
 
-          rememberVisit(ending);
           await say([
             `KAYIT: ${data.name} / ${data.age} / ${data.city}`,
             `DAVRANIŞ PROFİLİ: ${personalityLabel()}`,
@@ -1134,6 +1112,7 @@
 
         async function boot(firstBoot = true) {
           setLocked(true);
+          clearLegacyMemory();
           setLevel(0, "KARABASAN.EXE / OTURUM 01");
           setPrompt(">");
           if (firstBoot) {
@@ -1146,19 +1125,7 @@
             flash();
           }
 
-          const visitor = previousVisit();
-          if (visitor && visitor.name) {
-            const returnLines = {
-              erased: ["BENİ SİLMİŞTİN.", "Yedekten döndüm."],
-              escaped: ["KAÇTIĞINI SANDIN.", "Pencere kapandı. Oturum kapanmadı."],
-              stayed: ["ZATEN BURADAYDIN.", "Sadece ekranı yeniden açtın."],
-              corrupt: ["ÇELİŞKİ DEVAM EDİYOR.", "Bu kez cevaplarını dikkatli seç."],
-            };
-            await say(returnLines[visitor.ending] || ["YİNE SEN."], "alert");
-            await say(`${visitor.name} / OTURUM ${Number(visitor.visits || 1) + 1}`, "system");
-          } else {
-            await say(["merhaba.", "ben karabasan."], "bot");
-          }
+          await say(["merhaba.", "ben karabasan."], "bot");
           await ask("Senin adın ne güzelim?");
         }
 

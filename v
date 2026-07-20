@@ -137,11 +137,11 @@
         let comet = { x: 0, y: 0, vx: 0, vy: 0, visible: false };
         let cometTrail = [];
         const sceneMessages = [
-          "AWAY FROM THE WORLD",
-          "NOT GONE. JUST ELSEWHERE.",
+          "DÜNYA ARTIK ÇOK UZAKTA.",
+          "IŞIK ÇEKİLİR. İZİ KALIR.",
           "",
-          "",
-          "RETURN TO THE VOID",
+          "SESSİZLİK ADIMI BİLİYOR.",
+          "BOŞLUK HİÇBİR ŞEYİ UNUTMAZ.",
         ];
         let sceneIndex = 0;
         let previousScene = 0;
@@ -411,7 +411,7 @@
           const sampleHeight = width < 560 ? 92 : 78;
           const sampleCtx = sample.getContext("2d");
           let fontSize = width < 560 ? 15 : 21;
-          const lines = width < 560 ? ["BETWEEN SILENCE", "AND LIGHT"] : ["BETWEEN SILENCE AND LIGHT"];
+          const lines = width < 560 ? ["BAZI YOLLAR SADECE", "İLERİ GİDER."] : ["BAZI YOLLAR SADECE İLERİ GİDER."];
           sample.width = sampleWidth;
           sample.height = sampleHeight;
           sampleCtx.font = `600 ${fontSize}px Arial, sans-serif`;
@@ -551,7 +551,7 @@
           if (secret.active) {
             const intro = easeOutCubic(clamp(secret.age / 0.9));
             const outro = 1 - easeInCubic(clamp((secret.age - 3.7) / 1.1));
-            drawMessageText("YOU FOUND THE OTHER SIDE", now, null, {
+            drawMessageText("BURAYA KADAR GELMEMELİYDİN.", now, null, {
               alpha: intro * outro * 1.35,
               enter: intro,
               yOffset: -8,
@@ -747,7 +747,7 @@
           }
           cuePulse = Math.max(0, cuePulse - dt * 0.72);
 
-          if (pendingBlackHole && sceneAge >= 1.15) {
+          if (pendingBlackHole && sceneAge >= 3.65) {
             openBlackHole(pendingBlackHole.x, pendingBlackHole.y);
             pendingBlackHole = null;
           }

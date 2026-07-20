@@ -160,6 +160,28 @@
         caret-color: transparent;
       }
 
+      .send {
+        display: grid;
+        flex: 0 0 32px;
+        width: 32px;
+        height: 32px;
+        margin: -5px 0 -5px 8px;
+        padding: 0;
+        place-items: center;
+        border: 0;
+        border-radius: 0;
+        outline: 0;
+        color: var(--dim);
+        background: transparent;
+        font: 20px/1 "Courier New", Courier, monospace;
+        cursor: pointer;
+      }
+
+      .send:hover,
+      .send:focus-visible {
+        color: #fff;
+      }
+
       @keyframes blink {
         0%,
         48% {
@@ -228,6 +250,7 @@
       <form id="command" class="input-row" autocomplete="off">
         <span class="prompt">&gt;</span>
         <input id="answer" type="text" maxlength="80" aria-label="Cevabın" autocomplete="off" autocapitalize="off" spellcheck="false" readonly>
+        <button class="send" type="submit" aria-label="Gönder" title="Gönder">↵</button>
       </form>
     </main>
 

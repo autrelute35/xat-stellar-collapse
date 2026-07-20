@@ -141,7 +141,18 @@
           sync();
         };
 
+        const startFromPage = async (event) => {
+          if (event.target.closest(".player") || !track.paused) return;
+          try {
+            await track.play();
+          } catch (_) {
+            return;
+          }
+          sync();
+        };
+
         player.addEventListener("click", toggle);
+        document.addEventListener("click", startFromPage);
         track.addEventListener("play", sync);
         track.addEventListener("pause", sync);
         track.addEventListener("ended", sync);

@@ -137,11 +137,11 @@
         let comet = { x: 0, y: 0, vx: 0, vy: 0, visible: false };
         let cometTrail = [];
         const sceneMessages = [
-          "DÜNYA ARTIK ÇOK UZAKTA.",
-          "IŞIK ÇEKİLİR. İZİ KALIR.",
+          "ÇOK GEÇ.",
+          "ÇOK DERİN.",
           "",
-          "SESSİZLİK ADIMI BİLİYOR.",
-          "BOŞLUK HİÇBİR ŞEYİ UNUTMAZ.",
+          "ÇOK UZAK.",
+          "ARTIK YALNIZSIN.",
         ];
         let sceneIndex = 0;
         let previousScene = 0;
@@ -235,12 +235,26 @@
 
         function openBlackHole(x, y) {
           if (blackHole) return;
+          const farthestCorner = Math.hypot(
+            Math.max(x, width - x),
+            Math.max(y, height - y),
+          );
           blackHole = {
             x,
             y,
             age: 0,
             max: 6.5,
             spin: Math.random() > 0.5 ? 1 : -1,
+            accretion: Array.from({ length: width < 560 ? 90 : 170 }, () => ({
+              angle: random(0, Math.PI * 2),
+              radius: random(72, farthestCorner * 0.94),
+              speed: random(0.72, 1.65),
+              length: random(1.4, 4.8),
+              size: random(0.32, 1.18),
+              alpha: random(0.2, 0.92),
+              delay: random(0, 1.1),
+              depth: Math.random(),
+            })),
           };
           meteors = [];
           cometTrail = [];
@@ -286,13 +300,22 @@
               const delay = (distance / farthestCorner) * 1.12;
               const travel = clamp((activeHole.age - 0.42 - delay) / 2.5);
               const collapse = easeInCubic(travel);
-              angle = Math.atan2(dy, dx) + activeHole.spin * collapse * (3.2 + star.depth * 4.8);
-              const radius = distance * (1 - collapse);
+              const lensReach = Math.max(width, height) * 0.58;
+              const lens =
+                clamp(activeHole.age / 0.9) *
+                clamp(1 - distance / lensReach) *
+                (1 - travel);
+              angle =
+                Math.atan2(dy, dx) +
+                activeHole.spin * (lens * (0.52 + star.depth * 0.74) + collapse * (5.1 + star.depth * 7.2));
+              const radius = distance * (1 - collapse) * (1 + lens * 0.055);
               drawX = activeHole.x + Math.cos(angle) * radius;
               drawY = activeHole.y + Math.sin(angle) * radius;
               size *= 1 - travel * 0.78;
               alpha *= 1 - travel ** 1.65;
-              stretch = Math.sin(travel * Math.PI) * (1.4 + star.depth * 2.8);
+              stretch =
+                lens * (1.8 + star.depth * 4.5) +
+                Math.sin(travel * Math.PI) * (2.4 + star.depth * 7.5);
             }
 
             if (alpha <= 0.01 || size <= 0.05) continue;
@@ -316,9 +339,10 @@
         }
 
         function getMessageMetrics(message) {
-          let fontSize = width < 560 ? 11.5 : 15;
-          let letterSpacing = width < 560 ? 3.5 : 7.2;
           const characters = [...message];
+          const isShort = characters.length <= 18;
+          let fontSize = width < 560 ? (isShort ? 13.5 : 11.5) : (isShort ? 18 : 15);
+          let letterSpacing = width < 560 ? (isShort ? 4.2 : 3.5) : (isShort ? 8.2 : 7.2);
 
           ctx.font = `500 ${fontSize}px Arial, sans-serif`;
           let widths = characters.map((character) => ctx.measureText(character).width);
@@ -411,7 +435,7 @@
           const sampleHeight = width < 560 ? 92 : 78;
           const sampleCtx = sample.getContext("2d");
           let fontSize = width < 560 ? 15 : 21;
-          const lines = width < 560 ? ["BAZI YOLLAR SADECE", "İLERİ GİDER."] : ["BAZI YOLLAR SADECE İLERİ GİDER."];
+          const lines = ["ÇOK SESSİZ."];
           sample.width = sampleWidth;
           sample.height = sampleHeight;
           sampleCtx.font = `600 ${fontSize}px Arial, sans-serif`;
@@ -658,53 +682,114 @@
         }
 
         function drawBlackHole(hole) {
-          const opening = easeOutCubic(clamp(hole.age / 0.58));
-          const feeding = clamp((hole.age - 0.34) / 3.35);
-          const engulfing = easeInCubic(clamp((hole.age - 3.9) / 1.2));
+          const opening = easeOutCubic(clamp(hole.age / 0.72));
+          const feeding = easeOutCubic(clamp((hole.age - 0.3) / 3.7));
+          const engulfing = easeInCubic(clamp((hole.age - 4.05) / 1.48));
           const farthestCorner = Math.hypot(
             Math.max(hole.x, width - hole.x),
             Math.max(hole.y, height - hole.y),
           ) + 24;
-          const baseRadius = 7 + opening * 26 + feeding * 20;
+          const baseRadius = 8 + opening * 34 + feeding * 27;
           const coreRadius = baseRadius + engulfing * (farthestCorner - baseRadius);
-          const ringFade = opening * (1 - engulfing);
+          const ringFade = opening * (1 - easeInCubic(clamp((hole.age - 4.05) / 0.95)));
+          const firstLight = Math.sin(clamp(hole.age / 0.82) * Math.PI) * (1 - clamp((hole.age - 0.82) / 0.3));
+
+          if (feeding > 0.04 && engulfing < 0.94) {
+            const shade = ctx.createRadialGradient(
+              hole.x,
+              hole.y,
+              baseRadius * 1.1,
+              hole.x,
+              hole.y,
+              farthestCorner,
+            );
+            shade.addColorStop(0, "rgba(0, 0, 0, 0)");
+            shade.addColorStop(0.48, `rgba(0, 0, 0, ${feeding * 0.035})`);
+            shade.addColorStop(1, `rgba(0, 0, 0, ${feeding * 0.32})`);
+            ctx.fillStyle = shade;
+            ctx.fillRect(0, 0, width, height);
+          }
 
           if (ringFade > 0.01) {
             const halo = ctx.createRadialGradient(
               hole.x,
               hole.y,
-              baseRadius * 0.72,
+              baseRadius * 0.58,
               hole.x,
               hole.y,
-              baseRadius * 2.8,
+              baseRadius * 3.8,
             );
             halo.addColorStop(0, rgba(palette.white, 0));
-            halo.addColorStop(0.4, rgba(palette.white, 0.15 * ringFade));
-            halo.addColorStop(0.58, rgba(palette.white, 0.035 * ringFade));
+            halo.addColorStop(0.28, rgba(palette.white, 0.24 * ringFade));
+            halo.addColorStop(0.44, rgba(palette.white, 0.08 * ringFade));
+            halo.addColorStop(0.7, rgba(palette.white, 0.018 * ringFade));
             halo.addColorStop(1, rgba(palette.white, 0));
             ctx.fillStyle = halo;
             ctx.beginPath();
-            ctx.arc(hole.x, hole.y, baseRadius * 2.8, 0, Math.PI * 2);
+            ctx.arc(hole.x, hole.y, baseRadius * 3.8, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.save();
+            ctx.globalCompositeOperation = "lighter";
             ctx.translate(hole.x, hole.y);
-            ctx.rotate(hole.age * 0.72 * hole.spin);
-            ctx.scale(1, 0.34);
+            ctx.rotate(hole.age * 0.34 * hole.spin);
+            ctx.scale(1, 0.29);
             ctx.lineCap = "round";
 
-            for (let index = 0; index < 4; index += 1) {
-              const orbitRadius = baseRadius * (1.32 + index * 0.24);
-              const start = hole.age * (0.9 + index * 0.16) * hole.spin + index * 1.4;
+            for (const particle of hole.accretion) {
+              const localAge = hole.age - particle.delay;
+              if (localAge <= 0) continue;
+              const pull = easeInCubic(clamp(localAge / (4.35 - particle.delay * 0.18)));
+              const radius =
+                particle.radius * (1 - pull * 0.9) +
+                baseRadius * (1.04 + particle.depth * 0.42);
+              const angle =
+                particle.angle +
+                hole.spin * (localAge * particle.speed + pull * (7.2 + particle.depth * 4.8));
+              const streak = particle.length * (1 + pull * 6.5);
+
+              ctx.save();
+              ctx.rotate(angle);
+              ctx.translate(radius, 0);
+              ctx.rotate(Math.PI / 2);
+              ctx.fillStyle = rgba(
+                particle.depth > 0.72 ? palette.white : palette.silver,
+                particle.alpha * ringFade * (0.45 + pull * 0.55),
+              );
+              ctx.shadowBlur = particle.depth > 0.72 ? 8 : 3;
+              ctx.shadowColor = palette.white;
               ctx.beginPath();
-              ctx.arc(0, 0, orbitRadius, start, start + Math.PI * (0.72 + index * 0.08));
-              ctx.strokeStyle = rgba(index === 0 ? palette.white : palette.silver, ringFade * (0.7 - index * 0.12));
-              ctx.lineWidth = Math.max(0.7, 2.2 - index * 0.4);
-              ctx.shadowBlur = 14;
+              ctx.ellipse(0, 0, Math.max(0.22, particle.size), streak, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+
+            for (let index = 0; index < 7; index += 1) {
+              const orbitRadius = baseRadius * (1.18 + index * 0.21);
+              const start = hole.age * (1.15 + index * 0.2) * hole.spin + index * 1.18;
+              ctx.beginPath();
+              ctx.arc(0, 0, orbitRadius, start, start + Math.PI * (0.54 + index * 0.055));
+              ctx.strokeStyle = rgba(
+                index < 2 ? palette.white : palette.silver,
+                ringFade * Math.max(0.12, 0.82 - index * 0.105),
+              );
+              ctx.lineWidth = Math.max(0.55, 2.8 - index * 0.34);
+              ctx.shadowBlur = 18;
               ctx.shadowColor = palette.white;
               ctx.stroke();
             }
             ctx.restore();
+
+            if (firstLight > 0.01) {
+              ctx.strokeStyle = rgba(palette.white, firstLight * 0.9);
+              ctx.lineWidth = 1.4 + firstLight * 2.8;
+              ctx.shadowBlur = 28;
+              ctx.shadowColor = palette.white;
+              ctx.beginPath();
+              ctx.arc(hole.x, hole.y, baseRadius * (1.15 + firstLight * 0.75), 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.shadowBlur = 0;
+            }
           }
 
           ctx.fillStyle = "#000";
@@ -713,12 +798,24 @@
           ctx.fill();
 
           if (ringFade > 0.01) {
-            ctx.strokeStyle = rgba(palette.white, 0.82 * ringFade);
-            ctx.lineWidth = 1.15;
-            ctx.shadowBlur = 11;
+            ctx.strokeStyle = rgba(palette.white, 0.98 * ringFade);
+            ctx.lineWidth = 1.3 + feeding * 0.9;
+            ctx.shadowBlur = 21;
             ctx.shadowColor = palette.white;
             ctx.beginPath();
             ctx.arc(hole.x, hole.y, baseRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
+
+          if (engulfing > 0.01 && engulfing < 0.985) {
+            const edgeAlpha = Math.sin(engulfing * Math.PI) * 0.9;
+            ctx.strokeStyle = rgba(palette.white, edgeAlpha);
+            ctx.lineWidth = 1 + (1 - engulfing) * 2.4;
+            ctx.shadowBlur = 30 * (1 - engulfing);
+            ctx.shadowColor = palette.white;
+            ctx.beginPath();
+            ctx.arc(hole.x, hole.y, coreRadius, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
           }

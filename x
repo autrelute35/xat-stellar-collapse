@@ -557,7 +557,6 @@
         }
 
         function press(event) {
-          startMusic();
           if (reduceMotion.matches) return;
           const rect = canvas.getBoundingClientRect();
           openBlackHole(event.clientX - rect.left, event.clientY - rect.top);
@@ -599,6 +598,7 @@
         window.addEventListener("resize", resize);
         canvas.addEventListener("pointermove", move);
         canvas.addEventListener("pointerdown", press);
+        canvas.addEventListener("click", startMusic);
         canvas.addEventListener("pointerleave", leave);
         musicToggle.addEventListener("click", toggleMusic);
         music.addEventListener("play", syncMusicToggle);

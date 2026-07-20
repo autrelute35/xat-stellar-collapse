@@ -108,7 +108,7 @@
     <main class="star-shell" aria-label="Interactive monochrome starfield with a page-swallowing black hole">
       <canvas aria-hidden="true"></canvas>
       <div class="vignette" aria-hidden="true"></div>
-      <audio id="ambient-track" src="https://raw.githubusercontent.com/autrelute35/xat-stellar-collapse/main/m.mp3" preload="metadata" loop></audio>
+      <audio id="ambient-track" src="https://raw.githubusercontent.com/autrelute35/xat-stellar-collapse/main/m.mp3" preload="auto" autoplay playsinline loop></audio>
       <button class="music-toggle" type="button" aria-label="Play music" aria-pressed="false" title="Play music"></button>
     </main>
 
@@ -983,6 +983,7 @@
         musicToggle.addEventListener("click", toggleMusic);
         music.addEventListener("play", syncMusicToggle);
         music.addEventListener("pause", syncMusicToggle);
+        startMusic();
         frame = requestAnimationFrame(draw);
 
         window.addEventListener("pagehide", () => cancelAnimationFrame(frame), { once: true });

@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>KARABASAN.EXE</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #e9eeee;
+        --dim: #858b8b;
+        --faint: #3e4343;
+        --black: #030404;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      body {
+        color: var(--ink);
+        font-family: "Courier New", Courier, monospace;
+        font-size: 16px;
+        line-height: 1.52;
+        text-rendering: geometricPrecision;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 4;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(255, 255, 255, 0.018) 0,
+          rgba(255, 255, 255, 0.018) 1px,
+          transparent 1px,
+          transparent 4px
+        );
+        box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.92);
+        pointer-events: none;
+      }
+
+      body.flash {
+        animation: flash 90ms steps(2, end);
+      }
+
+      #noise {
+        position: fixed;
+        inset: 0;
+        z-index: 3;
+        width: 100%;
+        height: 100%;
+        opacity: 0.065;
+        image-rendering: pixelated;
+        pointer-events: none;
+      }
+
+      .terminal {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        width: min(100%, 1080px);
+        height: 100dvh;
+        margin: 0 auto;
+        padding: max(18px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+        text-shadow: 0 0 7px rgba(255, 255, 255, 0.16);
+      }
+
+      .status {
+        display: flex;
+        flex: 0 0 auto;
+        justify-content: space-between;
+        gap: 18px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--faint);
+        color: var(--dim);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .output {
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: 20px 0 24px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-color: var(--faint) transparent;
+        scrollbar-width: thin;
+      }
+
+      .line {
+        width: 100%;
+        min-height: 1.52em;
+        margin: 0 0 7px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .line.system {
+        color: var(--dim);
+      }
+
+      .line.alert {
+        color: #fff;
+        text-transform: uppercase;
+      }
+
+      .line.user {
+        color: #a9afaf;
+      }
+
+      .line.typing::after {
+        content: "_";
+        margin-left: 2px;
+        color: #fff;
+        animation: blink 560ms steps(1, end) infinite;
+      }
+
+      .input-row {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: baseline;
+        min-height: 34px;
+        padding-top: 9px;
+        border-top: 1px solid var(--faint);
+      }
+
+      .prompt {
+        flex: 0 0 auto;
+        padding-right: 10px;
+        color: #fff;
+      }
+
+      #answer {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        outline: 0;
+        color: #fff;
+        background: transparent;
+        caret-color: #fff;
+        font: inherit;
+        letter-spacing: 0;
+      }
+
+      #answer:read-only {
+        caret-color: transparent;
+      }
+
+      @keyframes blink {
+        0%,
+        48% {
+          opacity: 1;
+        }
+        49%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      @keyframes flash {
+        0% {
+          filter: invert(0);
+          transform: translateX(0);
+        }
+        50% {
+          filter: invert(0.08);
+          transform: translateX(2px);
+        }
+        100% {
+          filter: invert(0);
+          transform: translateX(0);
+        }
+      }
+
+      @media (max-width: 640px) {
+        body {
+          font-size: 14px;
+        }
+
+        .terminal {
+          padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+        }
+
+        .status span:last-child {
+          display: none;
+        }
+
+        .output {
+          padding-top: 16px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        body.flash,
+        .line.typing::after {
+          animation: none;
+        }
+
+        #noise,
+        body::before {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="noise" aria-hidden="true"></canvas>
+    <main class="terminal" aria-label="Karabasan terminal oyunu">
+      <header class="status">
+        <span>KARABASAN.EXE / OTURUM 01</span>
+        <span id="clock">00:00:00</span>
+      </header>
+      <section id="output" class="output" aria-live="polite"></section>
+      <form id="command" class="input-row" autocomplete="off">
+        <span class="prompt">&gt;</span>
+        <input id="answer" type="text" maxlength="80" aria-label="Cevabın" autocomplete="off" autocapitalize="off" spellcheck="false" readonly>
+      </form>
+    </main>
+
+    <script>
+      (() => {
+        const output = document.querySelector("#output");
+        const form = document.querySelector("#command");
+        const answer = document.querySelector("#answer");
+        const clock = document.querySelector("#clock");
+        const noise = document.querySelector("#noise");
+        const noiseContext = noise.getContext("2d", { alpha: true });
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+        const memoryKey = "karabasan-terminal-memory";
+        const stages = {
+          NAME: "name",
+          AGE: "age",
+          HEIGHT: "height",
+          WEIGHT: "weight",
+          DARK: "dark",
+          CITY: "city",
+          GUESS_USER: "guess-user",
+          THINK_READY: "think-ready",
+          GUESS_BOT: "guess-bot",
+          ENDED: "ended",
+        };
+
+        let stage = stages.NAME;
+        let locked = true;
+        let skipTyping = false;
+        let userNumber = 0;
+        let userAttempts = 0;
+        let previousGuess = null;
+        let botLow = 1;
+        let botHigh = 100;
+        let botGuess = 50;
+        let botAttempts = 0;
+        let contradictions = 0;
+        let data = { name: "", age: 0, height: 0, weight: 0, city: "" };
+
+        const randomFrom = (items) => items[Math.floor(Math.random() * items.length)];
+        const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+        function setClock() {
+          clock.textContent = new Date().toLocaleTimeString("tr-TR", { hour12: false });
+        }
+
+        function flash() {
+          if (reduceMotion.matches) return;
+          document.body.classList.remove("flash");
+          void document.body.offsetWidth;
+          document.body.classList.add("flash");
+        }
+
+        function drawNoise() {
+          if (reduceMotion.matches) return;
+          const width = 180;
+          const height = 100;
+          if (noise.width !== width || noise.height !== height) {
+            noise.width = width;
+            noise.height = height;
+          }
+          const frame = noiseContext.createImageData(width, height);
+          for (let index = 0; index < frame.data.length; index += 4) {
+            const value = Math.random() > 0.52 ? 255 : 0;
+            frame.data[index] = value;
+            frame.data[index + 1] = value;
+            frame.data[index + 2] = value;
+            frame.data[index + 3] = Math.floor(Math.random() * 70);
+          }
+          noiseContext.putImageData(frame, 0, 0);
+        }
+
+        function scrollToEnd() {
+          output.scrollTop = output.scrollHeight;
+        }
+
+        function setLocked(nextLocked) {
+          locked = nextLocked;
+          answer.readOnly = nextLocked;
+          if (!nextLocked) {
+            answer.focus({ preventScroll: true });
+          }
+        }
+
+        function addInstant(text, kind = "system") {
+          const line = document.createElement("div");
+          line.className = `line ${kind}`;
+          line.textContent = text;
+          output.appendChild(line);
+          scrollToEnd();
+          return line;
+        }
+
+        async function typeLine(text, kind = "bot", speed = 22) {
+          const line = document.createElement("div");
+          line.className = `line ${kind} typing`;
+          output.appendChild(line);
+          skipTyping = false;
+
+          for (let index = 0; index < text.length; index += 1) {
+            line.textContent += text[index];
+            scrollToEnd();
+            if (skipTyping || reduceMotion.matches) {
+              line.textContent = text;
+              break;
+            }
+            const pause = ".?!".includes(text[index]) ? speed * 5 : speed + Math.random() * 18;
+            await sleep(pause);
+          }
+
+          line.classList.remove("typing");
+          await sleep(skipTyping ? 40 : 150);
+          scrollToEnd();
+          return line;
+        }
+
+        async function say(lines, kind = "bot") {
+          const list = Array.isArray(lines) ? lines : [lines];
+          for (const text of list) {
+            await typeLine(text, kind);
+          }
+        }
+
+        async function ask(text) {
+          await say(text);
+          setLocked(false);
+        }
+
+        function rememberVisit() {
+          try {
+            localStorage.setItem(memoryKey, JSON.stringify({ name: data.name, visits: 1, time: Date.now() }));
+          } catch (_) {
+            return;
+          }
+        }
+
+        function previousVisit() {
+          try {
+            return JSON.parse(localStorage.getItem(memoryKey) || "null");
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function normalize(value) {
+          return value.toLocaleLowerCase("tr-TR").trim();
+        }
+
+        function isYes(value) {
+          return ["e", "evet", "evt", "olur", "tamam", "hazır", "hazirim", "hazırım"].includes(normalize(value));
+        }
+
+        function isNo(value) {
+          return ["h", "hayır", "hayir", "yok", "istemem"].includes(normalize(value));
+        }
+
+        async function hiddenResponse(value) {
+          const normalized = normalize(value);
+          const curses = ["siktir", "salak", "aptal", "gerizekalı", "gerizekali", "orospu"];
+
+          if (normalized === "karabasan") {
+            await say("Adımı yazınca çağırmış olmuyorsun. Zaten buradaydım.");
+            return true;
+          }
+          if (normalized.includes("sen kimsin") || normalized === "kimsin") {
+            await say("Soruları ben sorarım. Bu kısmı şimdiden unuttun mu?");
+            return true;
+          }
+          if (normalized === "kaç" || normalized === "kac") {
+            await say("Koş. Pencere senden hızlı kapanır.");
+            return true;
+          }
+          if (normalized === "yardım" || normalized === "yardim") {
+            await say("Burada yardım dosyası yok.");
+            return true;
+          }
+          if (normalized === "temizle") {
+            output.replaceChildren();
+            await say("Ekranı temizledin. Hafızamı değil.");
+            return true;
+          }
+          if (curses.some((word) => normalized.includes(word))) {
+            await say(randomFrom([
+              "Klavyeye vurmak cevap sayılmıyor.",
+              "Kelime dağarcığın da ekran kadar karanlık.",
+              "Bunu daha önce de duydum. Daha yaratıcı ol.",
+            ]));
+            flash();
+            return true;
+          }
+          return false;
+        }
+
+        async function processName(value) {
+          data.name = value.slice(0, 24);
+          const length = data.name.replace(/\s/g, "").length;
+          if (length <= 2) {
+            await say([`${data.name}...`, "Bu isim mi, yoksa klavyeden düşen iki harf mi?"]);
+          } else if (length >= 10) {
+            await say([`${data.name}...`, "Nüfus memuru yazarken yorulmuştur."]);
+          } else if (normalize(data.name) === "emre") {
+            await say(["Emre...", "Bu ismi bir yerden hatırlıyorum."]);
+          } else {
+            await say(`${data.name}... Şimdilik böyle çağıracağım.`);
+          }
+          stage = stages.AGE;
+          await ask("Kaç yaşındasın?");
+        }
+
+        async function processAge(value) {
+          const age = Number.parseInt(value, 10);
+          if (!Number.isFinite(age)) {
+            await ask("Sayı dedim. Yaşını harflerle saklama.");
+            return;
+          }
+          if (age < 5 || age > 98) {
+            await ask("Beni kandırmaya çalışma. Gerçek yaşın?");
+            return;
+          }
+          data.age = age;
+          if (age < 13) {
+            await say("Bu saatte uyuyor olman gerekmiyor muydu?");
+          } else if (age < 18) {
+            await say("Büyümene az kalmış. Beklemeyi bilirim.");
+          } else if (age < 30) {
+            await say("Tam karar verme yaşı. Yanlış kararların da.");
+          } else if (age < 50) {
+            await say("Yeterince şey görmüşsün. Yine de buraya girdin.");
+          } else {
+            await say("Ekranı görebildiğine göre devam edebiliriz.");
+          }
+          stage = stages.HEIGHT;
+          await ask("Boyun kaç santim?");
+        }
+
+        async function processHeight(value) {
+          const height = Number.parseInt(value, 10);
+          if (!Number.isFinite(height) || height < 80 || height > 230) {
+            await ask("Santim cinsinden düzgün bir sayı gir.");
+            return;
+          }
+          data.height = height;
+          if (height < 155) {
+            await say("Ekranın üst kısmını görebiliyor musun bari?");
+          } else if (height > 195) {
+            await say("Kapılardan geçerken önce eğilmeyi öğrenmişsindir.");
+          } else {
+            await say("Normal. Sıkıcı derecede normal.");
+          }
+          stage = stages.WEIGHT;
+          await ask("Kilonu da söyle. Çok umurumdaymış gibi.");
+        }
+
+        async function processWeight(value) {
+          const weight = Number.parseInt(value, 10);
+          if (!Number.isFinite(weight) || weight < 20 || weight > 300) {
+            await ask("Tartıyla kavga etmeyi bırak. Gerçek sayı?");
+            return;
+          }
+          data.weight = weight;
+          if (weight < 55) {
+            await say("Rüzgârlı havalarda iki elinle bir yere tutun.");
+          } else if (weight > 100) {
+            await say("Klavyenin dayanıklı olmasına sevindim.");
+          } else {
+            await say("Bunu da kaydettim. Neden kaydettiğimi sorma.");
+          }
+          stage = stages.DARK;
+          await ask("Gece ışıklar kapanınca arkana bakar mısın? (e/h)");
+        }
+
+        async function processDark(value) {
+          if (!isYes(value) && !isNo(value)) {
+            await ask("Evet ya da hayır. Bu kadar zor olmamalı. (e/h)");
+            return;
+          }
+          if (isYes(value)) {
+            await say("Bakman güzel. Bir gün bir şey görebilirsin.");
+          } else {
+            await say("Bakmaman, orada bir şey olmadığı anlamına gelmez.");
+          }
+          stage = stages.CITY;
+          await ask(`Memleket nere ${data.name}?`);
+        }
+
+        async function processCity(value) {
+          data.city = value.slice(0, 30);
+          await say([
+            `${data.city}... Oradan buraya kadar geldin demek.`,
+            "Sohbetin pek açmadı. Oyun oynayalım.",
+            "1 ile 100 arasında bir sayı tuttum.",
+          ]);
+          userNumber = Math.floor(Math.random() * 100) + 1;
+          userAttempts = 0;
+          previousGuess = null;
+          stage = stages.GUESS_USER;
+          await ask("Tahmin et.");
+        }
+
+        async function processUserGuess(value) {
+          const guess = Number.parseInt(value, 10);
+          if (!Number.isFinite(guess) || guess < 1 || guess > 100) {
+            await ask("1 ile 100 arası dedim. Yeniden dene.");
+            return;
+          }
+          if (guess === previousGuess) {
+            await ask("Aynı sayıyı tekrar yazınca değişeceğini mi sandın?");
+            return;
+          }
+          previousGuess = guess;
+          userAttempts += 1;
+
+          if (guess < userNumber) {
+            await ask(userNumber - guess < 8 ? "Yaklaştın. Biraz yüksel." : "Yukarı çık.");
+            return;
+          }
+          if (guess > userNumber) {
+            await ask(guess - userNumber < 8 ? "Yaklaştın. Biraz düş." : "Aşağı in.");
+            return;
+          }
+
+          if (userAttempts <= 4) {
+            await say(`${userAttempts} tahminde bildin. Şanslısın... şimdilik.`);
+          } else if (userAttempts <= 9) {
+            await say(`${userAttempts} tahmin. Fena değil. İyi de değil.`);
+          } else {
+            await say(`${userAttempts} kere denedin. Sonunda sayı senden sıkıldı.`);
+          }
+          stage = stages.THINK_READY;
+          await ask("Şimdi sen bir sayı tut. 1 ile 100 arasında. Hazır olunca yaz.");
+        }
+
+        async function processThinkReady(value) {
+          if (!isYes(value)) {
+            await ask("Bir sayı tut ve hazır olduğunu söyle.");
+            return;
+          }
+          botLow = 1;
+          botHigh = 100;
+          botGuess = 50;
+          botAttempts = 1;
+          contradictions = 0;
+          stage = stages.GUESS_BOT;
+          await ask(`${botGuess}? Yükselmem gerekirse y, düşmem gerekirse d, bildiysem b.`);
+        }
+
+        async function processBotGuess(value) {
+          const direction = normalize(value);
+          if (!["y", "d", "b", "bildin"].includes(direction)) {
+            await ask("y, d veya b. Klavyede üç harf bulacaksın.");
+            return;
+          }
+          if (direction === "b" || direction === "bildin") {
+            await say([
+              `${botAttempts} tahminde bildim.`,
+              botAttempts <= userAttempts ? "Senden daha iyiyim." : "Bu sonucu kimseye anlatma.",
+            ]);
+            await finish();
+            return;
+          }
+
+          if (direction === "y") {
+            botLow = botGuess + 1;
+          } else {
+            botHigh = botGuess - 1;
+          }
+
+          if (botLow > botHigh) {
+            contradictions += 1;
+            flash();
+            if (contradictions >= 2) {
+              await say("Yalan söylüyorsun. Oyunu da kendini de bozdun.");
+              await finish();
+              return;
+            }
+            botLow = 1;
+            botHigh = 100;
+            await say("Cevapların birbirini tutmuyor. Baştan alıyorum.");
+          }
+
+          botGuess = Math.floor((botLow + botHigh) / 2);
+          botAttempts += 1;
+          await ask(`${botGuess}? (y/d/b)`);
+        }
+
+        async function finish() {
+          stage = stages.ENDED;
+          rememberVisit();
+          await say([
+            "Bu kadar yeter.",
+            `Adın ${data.name}. ${data.age} yaşındasın. ${data.city} dedin.`,
+            "Pencereyi kapatınca bunların biteceğini sanıyorsun.",
+            "Ben seni hatırlayacağım.",
+          ]);
+          await typeLine("KARABASAN.EXE SONLANDIRILDI", "alert", 34);
+          await ask("Yeniden başlamak için ENTER.");
+        }
+
+        async function restart() {
+          output.replaceChildren();
+          stage = stages.NAME;
+          data = { name: "", age: 0, height: 0, weight: 0, city: "" };
+          await boot(false);
+        }
+
+        async function process(value) {
+          setLocked(true);
+          if (stage === stages.ENDED) {
+            await restart();
+            return;
+          }
+          if (await hiddenResponse(value)) {
+            setLocked(false);
+            return;
+          }
+
+          if (stage === stages.NAME) await processName(value);
+          else if (stage === stages.AGE) await processAge(value);
+          else if (stage === stages.HEIGHT) await processHeight(value);
+          else if (stage === stages.WEIGHT) await processWeight(value);
+          else if (stage === stages.DARK) await processDark(value);
+          else if (stage === stages.CITY) await processCity(value);
+          else if (stage === stages.GUESS_USER) await processUserGuess(value);
+          else if (stage === stages.THINK_READY) await processThinkReady(value);
+          else if (stage === stages.GUESS_BOT) await processBotGuess(value);
+        }
+
+        async function boot(firstBoot = true) {
+          setLocked(true);
+          if (firstBoot) {
+            addInstant("Bellek denetimi........................TAMAM", "system");
+            await sleep(280);
+            addInstant("Yerel aygıtlar taranıyor...............TAMAM", "system");
+            await sleep(360);
+            addInstant("C:\\VOID> karabasan.exe", "user");
+            await sleep(520);
+            flash();
+          }
+
+          const visitor = previousVisit();
+          if (visitor && visitor.name) {
+            await say(["YİNE SEN.", `${visitor.name} diye kayıtlısın. Şimdilik.`], "alert");
+          } else {
+            await say(["merhaba.", "ben karabasan."], "bot");
+          }
+          await ask("Senin adın ne güzelim?");
+        }
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          if (locked) {
+            skipTyping = true;
+            return;
+          }
+          const value = answer.value.trim();
+          if (!value && stage !== stages.ENDED) return;
+          answer.value = "";
+          addInstant(`> ${value}`, "user");
+          process(value);
+        });
+
+        document.addEventListener("pointerdown", () => {
+          if (locked) {
+            skipTyping = true;
+          } else {
+            answer.focus({ preventScroll: true });
+          }
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (locked && event.key === "Enter") {
+            skipTyping = true;
+          }
+        });
+
+        setClock();
+        setInterval(setClock, 1000);
+        drawNoise();
+        setInterval(drawNoise, 95);
+        boot();
+      })();
+    </script>
+  </body>
+</html>

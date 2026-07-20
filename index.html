@@ -57,35 +57,50 @@
         background: radial-gradient(ellipse at center, transparent 48%, rgba(0, 0, 0, 0.56) 100%);
       }
 
-      .music-dock {
+      .music-toggle {
         position: absolute;
         right: max(12px, env(safe-area-inset-right));
         bottom: max(12px, env(safe-area-inset-bottom));
         z-index: 3;
-        width: 200px;
-        height: 200px;
-        overflow: hidden;
-        border: 1px solid rgba(247, 249, 251, 0.16);
-        border-radius: 4px;
-        background: #000;
-        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.72);
-        opacity: 0;
-        pointer-events: none;
-        transform: translateY(12px);
-        transition: opacity 420ms ease, transform 420ms ease;
+        display: grid;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        place-items: center;
+        border: 1px solid rgba(247, 249, 251, 0.34);
+        border-radius: 50%;
+        background: rgba(1, 1, 2, 0.72);
+        box-shadow: 0 7px 22px rgba(0, 0, 0, 0.62);
+        cursor: pointer;
+        opacity: 0.58;
+        transition: opacity 180ms ease, border-color 180ms ease, transform 180ms ease;
       }
 
-      .music-dock.is-active {
+      .music-toggle:hover,
+      .music-toggle:focus-visible {
         opacity: 1;
-        pointer-events: auto;
-        transform: translateY(0);
+        border-color: rgba(247, 249, 251, 0.76);
+        outline: none;
+        transform: scale(1.04);
       }
 
-      .music-dock iframe {
+      .music-toggle::before {
+        width: 0;
+        height: 0;
+        margin-left: 2px;
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+        border-left: 8px solid #f7f9fb;
+        content: "";
+      }
+
+      .music-toggle.is-playing::before {
         display: block;
-        width: 200px;
-        height: 200px;
+        width: 8px;
+        height: 10px;
+        margin-left: 0;
         border: 0;
+        background: linear-gradient(to right, #f7f9fb 0 2px, transparent 2px 6px, #f7f9fb 6px 8px);
       }
     </style>
   </head>
@@ -93,18 +108,20 @@
     <main class="star-shell" aria-label="Interactive monochrome starfield with a page-swallowing black hole">
       <canvas aria-hidden="true"></canvas>
       <div class="vignette" aria-hidden="true"></div>
-      <div class="music-dock" aria-label="Music player">
-        <div id="music-player"></div>
-      </div>
+      <audio id="ambient-track" src="https://raw.githubusercontent.com/autrelute35/xat-stellar-collapse/main/m.mp3" preload="metadata" loop></audio>
+      <button class="music-toggle" type="button" aria-label="Play music" aria-pressed="false" title="Play music"></button>
     </main>
 
     <script>
       (() => {
         const canvas = document.querySelector("canvas");
         const ctx = canvas.getContext("2d");
-        const musicDock = document.querySelector(".music-dock");
+        const music = document.querySelector("#ambient-track");
+        const musicToggle = document.querySelector(".music-toggle");
         const palette = { white: "#f7f9fb", silver: "#aeb4ba" };
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+        music.volume = 0.38;
 
         let width = 0;
         let height = 0;
@@ -119,49 +136,7 @@
         let pointer = { x: 0.5, y: 0.5 };
         let comet = { x: 0, y: 0, vx: 0, vy: 0, visible: false };
         let cometTrail = [];
-        let musicPlayer = null;
-        let musicReady = false;
-        let musicRequested = false;
         let frame = 0;
-
-        window.onYouTubeIframeAPIReady = () => {
-          musicPlayer = new window.YT.Player("music-player", {
-            width: 200,
-            height: 200,
-            videoId: "xFyUnj_jT3s",
-            playerVars: {
-              autoplay: 0,
-              controls: 1,
-              disablekb: 0,
-              fs: 0,
-              loop: 1,
-              playlist: "xFyUnj_jT3s",
-              playsinline: 1,
-              rel: 0,
-            },
-            events: {
-              onReady(event) {
-                musicReady = true;
-                event.target.setVolume(38);
-                event.target.mute();
-                if (musicRequested) {
-                  event.target.playVideo();
-                  event.target.unMute();
-                }
-              },
-              onStateChange(event) {
-                if (musicRequested && event.data === window.YT.PlayerState.PLAYING && event.target.isMuted()) {
-                  event.target.unMute();
-                }
-              },
-            },
-          });
-        };
-
-        const youtubeApi = document.createElement("script");
-        youtubeApi.src = "https://www.youtube.com/iframe_api";
-        youtubeApi.async = true;
-        document.head.appendChild(youtubeApi);
 
         function rgb(hex) {
           const value = hex.replace("#", "");
@@ -588,14 +563,29 @@
           openBlackHole(event.clientX - rect.left, event.clientY - rect.top);
         }
 
-        function startMusic() {
-          if (musicRequested) return;
-          musicRequested = true;
-          musicDock.classList.add("is-active");
-          if (!musicReady || !musicPlayer) return;
-          musicPlayer.setVolume(38);
-          musicPlayer.playVideo();
-          musicPlayer.unMute();
+        async function startMusic() {
+          if (!music.paused) return;
+          try {
+            await music.play();
+          } catch {
+            syncMusicToggle();
+          }
+        }
+
+        function syncMusicToggle() {
+          const isPlaying = !music.paused;
+          musicToggle.classList.toggle("is-playing", isPlaying);
+          musicToggle.setAttribute("aria-pressed", String(isPlaying));
+          musicToggle.setAttribute("aria-label", isPlaying ? "Pause music" : "Play music");
+          musicToggle.title = isPlaying ? "Pause music" : "Play music";
+        }
+
+        function toggleMusic() {
+          if (music.paused) {
+            startMusic();
+          } else {
+            music.pause();
+          }
         }
 
         function leave() {
@@ -610,6 +600,9 @@
         canvas.addEventListener("pointermove", move);
         canvas.addEventListener("pointerdown", press);
         canvas.addEventListener("pointerleave", leave);
+        musicToggle.addEventListener("click", toggleMusic);
+        music.addEventListener("play", syncMusicToggle);
+        music.addEventListener("pause", syncMusicToggle);
         frame = requestAnimationFrame(draw);
 
         window.addEventListener("pagehide", () => cancelAnimationFrame(frame), { once: true });

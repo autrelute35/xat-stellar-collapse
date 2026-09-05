@@ -48,19 +48,19 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
     letterStars=[];
     for(let y=0;y<textCanvas.height;y+=2)for(let x=0;x<textCanvas.width;x+=2){
       const a=pixels[(y*textCanvas.width+x)*4+3]/255;
-      if(a>.18)letterStars.push({x:x-textCanvas.width/2,y:y-textCanvas.height/2,a,phase:rand(0,TAU),r:rand(.38,.7)});
+      if(a>.12)letterStars.push({x:x-textCanvas.width/2,y:y-textCanvas.height/2,a,phase:rand(0,TAU),r:rand(.72,1.05)});
     }
     letterBorn=time;
   }
   function drawLetters(cx,cy,t,age){
     const fade=smooth((time-letterBorn)/1.5)*(stage===6?smooth((age-2)/1.5):1);
     const breath=1+Math.sin(t*.95)*.016;
-    ctx.fillStyle='#fff';
+    ctx.save();ctx.fillStyle='#fff';ctx.shadowColor='rgba(255,255,255,.32)';ctx.shadowBlur=2.5;
     for(const p of letterStars){
       const shimmer=.72+.28*Math.sin(t*.6+p.phase);
-      dot(cx+p.x*breath,cy+p.y*breath+Math.sin(t*.45)*2,p.r,p.a*.43*fade*shimmer);
+      dot(cx+p.x*breath,cy+p.y*breath+Math.sin(t*.45)*2,p.r,p.a*.76*fade*shimmer);
     }
-    ctx.globalAlpha=1;
+    ctx.restore();ctx.globalAlpha=1;
   }
   function resize(){w=innerWidth;h=innerHeight;const d=Math.min(devicePixelRatio||1,1.5);canvas.width=w*d;canvas.height=h*d;ctx.setTransform(d,0,0,d,0,0)}
   function seed(){stars=Array.from({length:innerWidth<600?720:1100},()=>({x:rand(-1.6,1.6),y:rand(-1.9,1.9),z:rand(.25,1.8),size:rand(.45,1.1),alpha:rand(.25,.85),phase:rand(0,TAU)}));

@@ -28,50 +28,66 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const captions=['Uzaktan her şey sessiz.','Yaklaştıkça değişir.','Boşluk bile nefes alır.','Bir arada. Birbirinden uzak.','Her şey bir iz bırakır.','Artık geri dönüş yok.','Geriye sessizlik kalır.'];
   const TAU=Math.PI*2,rand=(a,b)=>a+Math.random()*(b-a),clamp=v=>Math.max(0,Math.min(1,v)),smooth=v=>{v=clamp(v);return v*v*(3-2*v)};
-  let w=innerWidth,h=innerHeight,time=0,last=0,stage=0,stageTime=0,previous=0,transition=1,visible=true,autoMusic=true,textToken=0,down=null;
-  let stars=[],dust=[],nextMeteor=2,meteors=[],letterStars=[],letterBorn=0;
-  const textCanvas=document.createElement('canvas'),textContext=textCanvas.getContext('2d',{willReadFrequently:true});
-  function buildLetters(){
-    const size=w<600?20:25,maxWidth=Math.min(w*.7,430),rows=[];
-    textContext.font=size+'px "Helvetica Neue", Arial, sans-serif';
-    let row='';
+  let w=innerWidth,h=innerHeight,time=0,last=0,stage=0,stageTime=0,previous=0,transition=1,visible=true,autoMusic=true,down=null;
+  let stars=[],dust=[],nextMeteor=2,meteors=[],letterBorn=0;
+  const captionSurface=document.createElement('canvas'),captionCtx=captionSurface.getContext('2d',{willReadFrequently:true});
+  let captionPieces=[],captionWidth=0,captionHeight=0,outgoingCaption=null;
+  function prepareCaption(){
+    const size=w<600?20:25,maxWidth=Math.min(w*.7,430),font='300 '+size+'px "Helvetica Neue", Arial, sans-serif';
+    captionCtx.font=font;
+    const rows=[];let row='';
     for(const word of captions[stage].split(' ')){
       const test=row?row+' '+word:word;
-      if(row&&textContext.measureText(test).width>maxWidth){rows.push(row);row=word}else row=test;
+      if(row&&captionCtx.measureText(test).width>maxWidth){rows.push(row);row=word}else row=test;
     }
     rows.push(row);
-    textCanvas.width=Math.ceil(maxWidth+12);textCanvas.height=rows.length*size*1.5+12;
-    textContext.font=size+'px "Helvetica Neue", Arial, sans-serif';
-    textContext.textAlign='center';textContext.textBaseline='middle';textContext.fillStyle='#fff';
-    rows.forEach((r,i)=>textContext.fillText(r,textCanvas.width/2,6+size*.75+i*size*1.5));
-    const pixels=textContext.getImageData(0,0,textCanvas.width,textCanvas.height).data;
-    letterStars=[];
-    for(let y=0;y<textCanvas.height;y+=2)for(let x=0;x<textCanvas.width;x+=2){
-      const a=pixels[(y*textCanvas.width+x)*4+3]/255;
-      if(a>.12&&Math.random()<.78)letterStars.push({x:x-textCanvas.width/2+rand(-.8,.8),y:y-textCanvas.height/2+rand(-.8,.8),a:a*rand(.58,1),phase:rand(0,TAU),r:rand(.42,1.08)});
+    captionWidth=Math.ceil(maxWidth+16);captionHeight=Math.ceil(rows.length*size*1.5+16);
+    captionSurface.width=captionWidth*2;captionSurface.height=captionHeight*2;
+    captionCtx.setTransform(2,0,0,2,0,0);captionCtx.font=font;
+    captionCtx.textAlign='center';captionCtx.textBaseline='middle';captionCtx.fillStyle='#c9c9c9';
+    rows.forEach((r,i)=>captionCtx.fillText(r,captionWidth/2,captionHeight/2+(i-(rows.length-1)/2)*size*1.5));
+    const data=captionCtx.getImageData(0,0,captionSurface.width,captionSurface.height).data;
+    captionPieces=[];
+    for(let y=0;y<captionHeight;y+=3)for(let x=0;x<captionWidth;x+=3){
+      const width=Math.min(3,captionWidth-x),height=Math.min(3,captionHeight-y);
+      let occupied=false;
+      for(let py=0;py<height*2&&!occupied;py++)for(let px=0;px<width*2;px++){
+        if(data[((y*2+py)*captionSurface.width+x*2+px)*4+3]>12){occupied=true;break}
+      }
+      if(occupied){const angle=rand(0,TAU),distance=rand(18,Math.min(w,h)*.19);
+        captionPieces.push({x,y,width,height,dx:Math.cos(angle)*distance,dy:Math.sin(angle)*distance,phase:rand(0,TAU)});
+      }
     }
-    letterBorn=time;
   }
   function drawLetters(cx,cy,t,age){
-    const fade=smooth((time-letterBorn)/1.5)*(stage===6?smooth((age-2)/1.5):1);
-    const breath=1+Math.sin(t*.95)*.016;
-    const size=w<600?20:25;
-    ctx.save();ctx.translate(cx,cy+Math.sin(t*.45)*2);ctx.scale(breath,breath);
-    ctx.font='300 '+size+'px "Helvetica Neue", Arial, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=`rgba(255,255,255,${.1*fade})`;
-    const rows=[];let row='';const maxWidth=Math.min(w*.7,430);
-    for(const word of captions[stage].split(' ')){const test=row?row+' '+word:word;if(row&&ctx.measureText(test).width>maxWidth){rows.push(row);row=word}else row=test}rows.push(row);
-    rows.forEach((r,i)=>ctx.fillText(r,0,(i-(rows.length-1)/2)*size*1.5));ctx.restore();
-    ctx.save();ctx.fillStyle='#fff';ctx.shadowColor='rgba(255,255,255,.22)';ctx.shadowBlur=2;
-    for(const p of letterStars){
-      const shimmer=.72+.28*Math.sin(t*.6+p.phase);
-      dot(cx+p.x*breath,cy+p.y*breath+Math.sin(t*.45)*2,p.r,p.a*.66*fade*shimmer);
+    const elapsed=time-letterBorn;
+    const outgoing=outgoingCaption&&elapsed<.8;
+    const delay=stage===6?2:outgoingCaption?.8:0;
+    if(!outgoing&&elapsed<delay)return;
+    const progress=smooth((outgoing?elapsed:elapsed-delay)/(outgoing?.8:1.2));
+    const fade=outgoing?1-progress:progress;
+    const scatter=reduced?0:outgoing?progress:1-progress;
+    const surface=outgoing?outgoingCaption.surface:captionSurface;
+    const pieces=outgoing?outgoingCaption.pieces:captionPieces;
+    const width=outgoing?outgoingCaption.width:captionWidth,height=outgoing?outgoingCaption.height:captionHeight;
+    ctx.save();ctx.globalAlpha=fade;ctx.translate(cx,cy+Math.sin(t*.45)*1.2);
+    if(scatter<.001){
+      ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=3;
+      ctx.drawImage(surface,-width/2,-height/2,width,height);
+    }else{
+      for(const p of pieces){
+        ctx.globalAlpha=fade*(1-scatter*.3);
+        const drift=Math.sin(t*.6+p.phase)*scatter*2;
+        ctx.drawImage(surface,p.x*2,p.y*2,p.width*2,p.height*2,
+          p.x-width/2+p.dx*scatter+drift,p.y-height/2+p.dy*scatter,p.width,p.height);
+      }
     }
     ctx.restore();ctx.globalAlpha=1;
   }
   function resize(){w=innerWidth;h=innerHeight;const d=Math.min(devicePixelRatio||1,1.5);canvas.width=w*d;canvas.height=h*d;ctx.setTransform(d,0,0,d,0,0)}
   function seed(){stars=Array.from({length:innerWidth<600?720:1100},()=>({x:rand(-1.6,1.6),y:rand(-1.9,1.9),z:rand(.25,1.8),size:rand(.45,1.1),alpha:rand(.25,.85),phase:rand(0,TAU)}));
     dust=Array.from({length:760},(_,i)=>({a:i*2.399963,b:Math.acos(1-2*(i+.5)/760),r:rand(.85,1),phase:rand(0,TAU),size:rand(.45,1.15)}))}
-  function caption(){letterStars=[];const token=++textToken;words.classList.remove('visible');setTimeout(()=>{if(token!==textToken)return;line.textContent=captions[stage];buildLetters();words.classList.add('visible')},350)}
+  function caption(){letterBorn=time;line.textContent=captions[stage];prepareCaption()}
   function audioState(){const playing=!music.paused;sound.setAttribute('aria-pressed',String(playing));sound.setAttribute('aria-label',playing?'Müziği kapat':'Müziği aç');sound.title=playing?'Müziği kapat':'Müziği aç'}
   function play(){music.volume=.65;music.play().then(audioState).catch(audioState)}
   sound.addEventListener('click',()=>{autoMusic=false;if(music.paused)play();else music.pause();audioState()});
@@ -79,6 +95,10 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
     if(stage===6&&time-stageTime<3)return;
     if(time-stageTime<.45)return;
     if(autoMusic){play();autoMusic=false}
+    const snapshot=document.createElement('canvas');
+    snapshot.width=captionSurface.width;snapshot.height=captionSurface.height;
+    snapshot.getContext('2d').drawImage(captionSurface,0,0);
+    outgoingCaption={surface:snapshot,pieces:captionPieces,width:captionWidth,height:captionHeight};
     previous=stage;stage=(stage+1)%7;stageTime=time;transition=0;
     canvas.dataset.scene=String(stage+1);mark.textContent=String(stage+1).padStart(2,'0')+' / 07';caption();
   }
@@ -131,7 +151,7 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
     meteors=meteors.filter(m=>m.age<1);for(const m of meteors){m.age+=dt*.65;const x=m.x-m.age*s*.8,y=m.y+m.age*s*.4;ctx.globalAlpha=Math.sin(clamp(m.age)*Math.PI)*.55;const g=ctx.createLinearGradient(x,y,x+60,y-30);g.addColorStop(0,'white');g.addColorStop(1,'transparent');ctx.strokeStyle=g;ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+60,y-30);ctx.stroke()}
     drawLetters(cx,cy,t,age);ctx.globalAlpha=1;
   }
-  resize();seed();canvas.dataset.scene='1';mark.textContent='01 / 07';caption();window.addEventListener('resize',()=>{resize();buildLetters()});requestAnimationFrame(draw);
+  resize();seed();canvas.dataset.scene='1';mark.textContent='01 / 07';caption();window.addEventListener('resize',()=>{resize();prepareCaption()});requestAnimationFrame(draw);
 })();
 </script>
 </body>

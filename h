@@ -72,17 +72,17 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
     const width=outgoing?outgoingCaption.width:captionWidth,height=outgoing?outgoingCaption.height:captionHeight;
     const restless=stage===6&&!outgoing&&progress>.8&&!reduced;
     const unrest=restless?smooth((progress-.8)/.2):0;
-    ctx.save();ctx.globalAlpha=fade;ctx.translate(cx+(restless?Math.sin(t*.31)*5:0),cy+Math.sin(t*.45)*1.2+(restless?Math.cos(t*.27)*3:0));
+    ctx.save();ctx.globalAlpha=fade;ctx.translate(cx+(restless?Math.sin(t*.31)*4:0),cy+Math.sin(t*.45)*1.2+(restless?Math.cos(t*.27)*2:0));
     if(scatter<.001&&!restless){
       ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=3;
       ctx.drawImage(surface,-width/2,-height/2,width,height);
     }else{
       for(const p of pieces){
-        const tremor=restless?unrest*(.018+.018*(Math.sin(t*.82+p.phase)*.5+.5)):0;
-        ctx.globalAlpha=fade*(1-scatter*.3)*(restless?.94+.06*Math.sin(t*1.1+p.phase):1);
-        const drift=Math.sin(t*.6+p.phase)*scatter*2+(restless?Math.sin(t*.9+p.phase)*.75:0);
+        const tremor=restless?unrest*(.003+.004*(Math.sin(t*.82+p.phase)*.5+.5)):0;
+        ctx.globalAlpha=fade*(1-scatter*.3)*(restless?.98+.02*Math.sin(t*1.1+p.phase):1);
+        const drift=Math.sin(t*.6+p.phase)*scatter*2+(restless?Math.sin(t*.9+p.phase)*.18:0);
         ctx.drawImage(surface,p.x*2,p.y*2,p.width*2,p.height*2,
-          p.x-width/2+p.dx*(scatter+tremor)+drift,p.y-height/2+p.dy*(scatter+tremor)+(restless?Math.cos(t*.73+p.phase)*.55:0),p.width,p.height);
+          p.x-width/2+p.dx*(scatter+tremor)+drift,p.y-height/2+p.dy*(scatter+tremor)+(restless?Math.cos(t*.73+p.phase)*.14:0),p.width,p.height);
       }
     }
     ctx.restore();ctx.globalAlpha=1;

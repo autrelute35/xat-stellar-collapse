@@ -29,7 +29,7 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
   const captions=['Uzaktan her şey sessiz.','Yaklaştıkça değişir.','Boşluk bile nefes alır.','Bir arada. Birbirinden uzak.','Her şey bir iz bırakır.','Artık geri dönüş yok.','Geriye sessizlik kalır.'];
   const TAU=Math.PI*2,rand=(a,b)=>a+Math.random()*(b-a),clamp=v=>Math.max(0,Math.min(1,v)),smooth=v=>{v=clamp(v);return v*v*(3-2*v)};
   let w=innerWidth,h=innerHeight,time=0,last=0,stage=0,stageTime=0,previous=0,transition=1,visible=true,autoMusic=true,down=null;
-  let stars=[],dust=[],nextMeteor=2,meteors=[],letterBorn=0;
+  let stars=[],dust=[],nextMeteor=2,meteors=[],letterBorn=0,finalDust=[],lastTrail=0;
   const captionSurface=document.createElement('canvas'),captionCtx=captionSurface.getContext('2d',{willReadFrequently:true});
   let captionPieces=[],captionWidth=0,captionHeight=0,outgoingCaption=null;
   function prepareCaption(){
@@ -100,6 +100,7 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
     snapshot.getContext('2d').drawImage(captionSurface,0,0);
     outgoingCaption={surface:snapshot,pieces:captionPieces,width:captionWidth,height:captionHeight};
     previous=stage;stage=(stage+1)%7;stageTime=time;transition=0;
+    if(stage===6){finalDust=[];lastTrail=time}
     canvas.dataset.scene=String(stage+1);mark.textContent=String(stage+1).padStart(2,'0')+' / 07';caption();
   }
   canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});
@@ -119,33 +120,44 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
     const speed=reduced?0:t*.65,radius=s*(.06+p.phase/TAU*.32);return {x:Math.cos(p.a+speed)*radius,y:Math.sin(p.a+speed)*radius*.46,alpha:.45+.4*p.r};
   }
   function dot(x,y,r,a){ctx.globalAlpha=clamp(a);ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()}
-  function finalStar(cx,cy,t,age,s){
+  function finalStar(cx,cy,t,age,s,dt){
     if(age<=3)return;
     const born=smooth((age-3)/2.2),pulse=1+Math.sin(t*1.9)*.1;
+    const moving=reduced?0:smooth((age-5.2)/1.7),u=Math.max(0,age-5.2);
+    const sx=cx+moving*s*(Math.sin(u*.63)*.22+Math.sin(u*1.37)*.055);
+    const sy=cy+moving*s*(Math.cos(u*.51)*.15-Math.cos(u*1.11)*.045);
+    if(!reduced&&moving>.04&&time-lastTrail>.045){
+      lastTrail=time;
+      for(let i=0;i<2;i++)finalDust.push({x:sx+rand(-3,3),y:sy+rand(-3,3),vx:rand(-5,5),vy:rand(-5,5),age:0,life:rand(1.1,2.1),size:rand(.35,1.05),phase:rand(0,TAU)});
+      if(finalDust.length>110)finalDust.splice(0,finalDust.length-110);
+    }
     ctx.save();ctx.globalCompositeOperation='screen';
-    const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,s*.12);
+    ctx.fillStyle='#fff';
+    finalDust=finalDust.filter(p=>p.age<p.life);
+    for(const p of finalDust){p.age+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;dot(p.x,p.y,p.size*(1-p.age/p.life*.45),(1-p.age/p.life)*(.3+.25*Math.sin(t*5+p.phase)))}
+    const glow=ctx.createRadialGradient(sx,sy,0,sx,sy,s*.12);
     glow.addColorStop(0,`rgba(255,255,255,${.72*born})`);
     glow.addColorStop(.055,`rgba(255,255,255,${.3*born})`);
     glow.addColorStop(.28,`rgba(255,255,255,${.07*born})`);
     glow.addColorStop(1,'rgba(255,255,255,0)');
-    ctx.globalAlpha=pulse;ctx.fillStyle=glow;ctx.beginPath();ctx.arc(cx,cy,s*.12,0,TAU);ctx.fill();
-    const horizontal=ctx.createLinearGradient(cx-s*.13,cy,cx+s*.13,cy);
+    ctx.globalAlpha=pulse;ctx.fillStyle=glow;ctx.beginPath();ctx.arc(sx,sy,s*.12,0,TAU);ctx.fill();
+    const horizontal=ctx.createLinearGradient(sx-s*.13,sy,sx+s*.13,sy);
     horizontal.addColorStop(0,'rgba(255,255,255,0)');horizontal.addColorStop(.42,`rgba(255,255,255,${.12*born})`);
     horizontal.addColorStop(.5,`rgba(255,255,255,${.92*born})`);horizontal.addColorStop(.58,`rgba(255,255,255,${.12*born})`);horizontal.addColorStop(1,'rgba(255,255,255,0)');
-    ctx.fillStyle=horizontal;ctx.fillRect(cx-s*.13,cy-.55,s*.26,1.1);
-    const vertical=ctx.createLinearGradient(cx,cy-s*.09,cx,cy+s*.09);
+    ctx.fillStyle=horizontal;ctx.fillRect(sx-s*.13,sy-.55,s*.26,1.1);
+    const vertical=ctx.createLinearGradient(sx,sy-s*.09,sx,sy+s*.09);
     vertical.addColorStop(0,'rgba(255,255,255,0)');vertical.addColorStop(.4,`rgba(255,255,255,${.1*born})`);
     vertical.addColorStop(.5,`rgba(255,255,255,${.88*born})`);vertical.addColorStop(.6,`rgba(255,255,255,${.1*born})`);vertical.addColorStop(1,'rgba(255,255,255,0)');
-    ctx.fillStyle=vertical;ctx.fillRect(cx-.55,cy-s*.09,1.1,s*.18);
+    ctx.fillStyle=vertical;ctx.fillRect(sx-.55,sy-s*.09,1.1,s*.18);
     ctx.strokeStyle=`rgba(255,255,255,${.2*born})`;ctx.lineWidth=.55;ctx.beginPath();
-    ctx.moveTo(cx-s*.026,cy-s*.026);ctx.lineTo(cx+s*.026,cy+s*.026);ctx.moveTo(cx+s*.026,cy-s*.026);ctx.lineTo(cx-s*.026,cy+s*.026);ctx.stroke();
+    ctx.moveTo(sx-s*.026,sy-s*.026);ctx.lineTo(sx+s*.026,sy+s*.026);ctx.moveTo(sx+s*.026,sy-s*.026);ctx.lineTo(sx-s*.026,sy+s*.026);ctx.stroke();
     for(let i=0;i<2;i++){
       const travel=((age-3.3+i*2.6)%5.2+5.2)%5.2/5.2,fade=Math.sin(travel*Math.PI)*.13*born;
-      ctx.globalAlpha=fade;ctx.strokeStyle='#fff';ctx.lineWidth=.65;ctx.beginPath();ctx.arc(cx,cy,s*(.025+travel*.15),0,TAU);ctx.stroke();
+      ctx.globalAlpha=fade;ctx.strokeStyle='#fff';ctx.lineWidth=.65;ctx.beginPath();ctx.arc(sx,sy,s*(.025+travel*.15),0,TAU);ctx.stroke();
     }
     ctx.globalAlpha=born;ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=18;
-    ctx.beginPath();ctx.arc(cx,cy,(2.15+born*1.35)*pulse,0,TAU);ctx.fill();
-    ctx.shadowBlur=5;ctx.globalAlpha=1;ctx.beginPath();ctx.arc(cx,cy,1.25,0,TAU);ctx.fill();ctx.restore();
+    ctx.beginPath();ctx.arc(sx,sy,(2.15+born*1.35)*pulse,0,TAU);ctx.fill();
+    ctx.shadowBlur=5;ctx.globalAlpha=1;ctx.beginPath();ctx.arc(sx,sy,1.25,0,TAU);ctx.fill();ctx.restore();
   }
   function draw(now){
     requestAnimationFrame(draw);if(!visible)return;
@@ -155,7 +167,7 @@ h1{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-seri
     veil.style.opacity=String(1-smooth(time/2));
     const swallow=stage===6?smooth(age/2):0;
     if(stage===6&&age>=2){
-      finalStar(cx,cy,t,age,s);
+      finalStar(cx,cy,t,age,s,dt);
       drawLetters(cx,cy-h*.07,t,age);ctx.globalAlpha=1;return;
     }
     for(const p of stars){
